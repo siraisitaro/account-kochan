@@ -1,468 +1,673 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Church Stewardship Manager Ver 3.0</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        church: { 50: '#f8fafc', 100: '#f1f5f9', 600: '#475569', 800: '#1e293b', 900: '#0f172a' }
-                    }
-                }
-            }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Church Stewardship Manager Ver 3.1 (Simulator)</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            church: { 50: '#f8fafc', 100: '#f1f5f9', 600: '#475569', 800: '#1e293b', 900: '#0f172a' }
+          }
         }
-    </script>
-    <style>
-        @media print {
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            body { background: white !important; }
-            .card { border: 1px solid #ccc !important; box-shadow: none !important; }
-        }
-        .chart-container { position: relative; height: 350px; width: 100%; }
-        input[type="range"] { accent-color: #0f172a; height: 8px; }
-        /* 数値入力のスピンボタンを常に表示しない（モダンな見た目） */
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-    </style>
+      }
+    }
+  </script>
+
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background: white !important; }
+      .card { border: 1px solid #ccc !important; box-shadow: none !important; }
+    }
+    .chart-container { position: relative; height: 350px; width: 100%; }
+    input[type="range"] { accent-color: #0f172a; height: 8px; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  </style>
 </head>
+
 <body class="bg-slate-50 text-slate-800 antialiased">
 
-    <nav class="bg-church-900 text-white shadow-md no-print">
-        <div class="max-w-6xl mx-auto px-4 h-16 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <i class="fa-solid fa-church text-xl"></i>
-                <span class="font-bold tracking-tight">Church Stewardship Manager</span>
-            </div>
-            <div class="flex items-center space-x-3">
-                <button onclick="toggleMode()" class="flex items-center space-x-2 bg-church-800 px-3 py-1.5 rounded-full border border-church-600 hover:bg-church-600 transition">
-                    <i id="mode-icon" class="fa-solid fa-cross text-xs"></i>
-                    <span id="mode-text" class="text-xs font-bold">牧会モード</span>
-                </button>
-            </div>
-        </div>
-    </nav>
+  <nav class="bg-church-900 text-white shadow-md no-print">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <i class="fa-solid fa-church text-xl"></i>
+        <span class="font-bold tracking-tight">Church Stewardship Manager</span>
+        <span class="text-[10px] opacity-70">Ver 3.1</span>
+      </div>
+      <div class="flex items-center space-x-3">
+        <button onclick="toggleMode()" class="flex items-center space-x-2 bg-church-800 px-3 py-1.5 rounded-full border border-church-600 hover:bg-church-600 transition">
+          <i id="mode-icon" class="fa-solid fa-cross text-xs"></i>
+          <span id="mode-text" class="text-xs font-bold">牧会モード</span>
+        </button>
+      </div>
+    </div>
+  </nav>
 
-    <main class="max-w-6xl mx-auto px-4 py-8">
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <p class="text-xs font-bold text-slate-500 uppercase term-income-summary">現在の月間収入予測</p>
-                <h3 class="text-3xl font-bold text-church-900 mt-2" id="totalIncomeDisplay">¥0</h3>
-                <p class="text-xs text-slate-400 mt-1">平均単価: <span id="avgPriceDisplay">¥0</span> /人</p>
-            </div>
-            
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <p class="text-xs font-bold text-slate-500 uppercase term-balance-summary">月間収支バランス</p>
-                <h3 class="text-3xl font-bold text-slate-300 mt-2" id="monthlyBalanceDisplay">---</h3>
-                <p class="text-xs text-slate-400 mt-1 term-balance-desc">収入 - 固定費</p>
-            </div>
+  <main class="max-w-6xl mx-auto px-4 py-8">
 
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <p class="text-xs font-bold text-slate-500 uppercase term-life-label">資金持続予測</p>
-                <h3 class="text-3xl font-bold text-slate-300 mt-2" id="lifeDisplay">---</h3>
-                <p class="text-xs text-slate-400 mt-1 term-life-desc">現在の備えが尽きるまで</p>
-            </div>
-        </div>
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <p class="text-xs font-bold text-slate-500 uppercase term-income-summary">現在の月間収入予測</p>
+        <h3 class="text-3xl font-bold text-church-900 mt-2" id="totalIncomeDisplay">¥0</h3>
+        <p class="text-xs text-slate-400 mt-1">平均単価: <span id="avgPriceDisplay">¥0</span> /人</p>
+        <p class="text-[10px] text-slate-400 mt-1">※ 標準（レンジ中点）と下振れ〜上振れ</p>
+      </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            <div class="lg:col-span-5 space-y-6 no-print">
-                
-                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <header class="bg-slate-100 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
-                        <h4 class="text-sm font-bold text-church-900 term-cost-title"><i class="fa-solid fa-file-invoice-dollar mr-2"></i>維持費の設定</h4>
-                    </header>
-                    <div class="p-5 space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 mb-1 term-fixed-cost">月額固定費</label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-2 text-slate-400 text-sm">¥</span>
-                                    <input type="number" id="fixedCost" placeholder="320000" class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-church-900 outline-none" oninput="calculate()">
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 mb-1 term-savings">現在の備え(預金)</label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-2 text-slate-400 text-sm">¥</span>
-                                    <input type="number" id="savings" placeholder="380000" class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-church-900 outline-none" oninput="calculate()">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <p class="text-xs font-bold text-slate-500 uppercase term-balance-summary">月間収支バランス</p>
+        <h3 class="text-3xl font-bold text-slate-300 mt-2 whitespace-pre-line" id="monthlyBalanceDisplay">---</h3>
+        <p class="text-xs text-slate-400 mt-1 term-balance-desc">収入 - 固定費</p>
+      </div>
 
-                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <header class="bg-slate-100 px-5 py-3 border-b border-slate-200">
-                        <h4 class="text-sm font-bold text-church-900 term-income-title"><i class="fa-solid fa-users mr-2"></i>献金の内訳（人数入力）</h4>
-                    </header>
-                    <div class="p-5 space-y-4">
-                        <p class="text-xs text-slate-500 leading-relaxed">
-                            教会員の方々の顔を思い浮かべて、それぞれのグループに何人いるか入力してください。
-                        </p>
-                        
-                        <div class="flex items-center space-x-3 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                            <div class="flex-1">
-                                <label class="text-[10px] font-bold text-blue-800 block mb-1">支える献金 (¥)</label>
-                                <input type="number" id="priceA" placeholder="例: 20000" class="w-full border-blue-200 rounded p-1.5 text-sm font-medium" oninput="calculate()">
-                            </div>
-                            <div class="text-blue-300 font-bold">×</div>
-                            <div class="w-20">
-                                <label class="text-[10px] font-bold text-blue-800 block mb-1">人数</label>
-                                <input type="number" id="countA" placeholder="0" class="w-full border-blue-200 rounded p-1.5 text-sm font-bold text-center bg-white" oninput="calculate()">
-                            </div>
-                            <div class="text-sm font-bold text-blue-900 w-16 text-right" id="subtotalA">¥0</div>
-                        </div>
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <p class="text-xs font-bold text-slate-500 uppercase term-life-label">資金持続予測</p>
+        <h3 class="text-3xl font-bold text-slate-300 mt-2" id="lifeDisplay">---</h3>
+        <p class="text-xs text-slate-400 mt-1 term-life-desc">下振れケースでの目安</p>
+      </div>
+    </div>
 
-                        <div class="flex items-center space-x-3 bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-                            <div class="flex-1">
-                                <label class="text-[10px] font-bold text-emerald-800 block mb-1">通常献金 (¥)</label>
-                                <input type="number" id="priceB" placeholder="例: 5000" class="w-full border-emerald-200 rounded p-1.5 text-sm font-medium" oninput="calculate()">
-                            </div>
-                            <div class="text-emerald-300 font-bold">×</div>
-                            <div class="w-20">
-                                <label class="text-[10px] font-bold text-emerald-800 block mb-1">人数</label>
-                                <input type="number" id="countB" placeholder="0" class="w-full border-emerald-200 rounded p-1.5 text-sm font-bold text-center bg-white" oninput="calculate()">
-                            </div>
-                            <div class="text-sm font-bold text-emerald-900 w-16 text-right" id="subtotalB">¥0</div>
-                        </div>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-                        <div class="flex items-center space-x-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                            <div class="flex-1">
-                                <label class="text-[10px] font-bold text-slate-600 block mb-1">学生・求職中 (¥)</label>
-                                <input type="number" id="priceC" placeholder="例: 500" class="w-full border-slate-200 rounded p-1.5 text-sm font-medium" oninput="calculate()">
-                            </div>
-                            <div class="text-slate-300 font-bold">×</div>
-                            <div class="w-20">
-                                <label class="text-[10px] font-bold text-slate-600 block mb-1">人数</label>
-                                <input type="number" id="countC" placeholder="0" class="w-full border-slate-200 rounded p-1.5 text-sm font-bold text-center bg-white" oninput="calculate()">
-                            </div>
-                            <div class="text-sm font-bold text-slate-700 w-16 text-right" id="subtotalC">¥0</div>
-                        </div>
+      <!-- Left Column -->
+      <div class="lg:col-span-5 space-y-6 no-print">
 
-                        <div class="flex justify-between items-center pt-2 border-t border-slate-100">
-                            <span class="text-xs font-bold text-slate-500">現在の出席人数計:</span>
-                            <span class="text-lg font-bold text-church-900"><span id="totalPeopleDisplay">0</span> 名</span>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <div class="lg:col-span-7 space-y-6">
-                
-                <div class="bg-church-900 rounded-xl shadow-lg p-6 text-white no-print">
-                    <div class="flex justify-between items-end mb-4">
-                        <div>
-                            <h4 class="text-sm font-bold text-church-100 opacity-80 mb-1 term-slider-title">未来シミュレーション</h4>
-                            <p class="text-xs text-slate-400">現在の構成比のまま、人数が増えたらどうなる？</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-4xl font-bold tracking-tight" id="simPeopleDisplay">0</span>
-                            <span class="text-sm font-medium opacity-70">名</span>
-                        </div>
-                    </div>
-                    <input type="range" id="peopleSlider" min="0" max="100" value="0" class="w-full h-3 bg-church-600 rounded-lg appearance-none cursor-pointer hover:bg-church-500 transition" oninput="updateSliderAndChart()">
-                    <div class="flex justify-between text-xs text-slate-400 mt-2">
-                        <span>0名</span>
-                        <span>50名</span>
-                        <span>100名</span>
-                    </div>
+        <!-- Fixed Cost + Savings -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <header class="bg-slate-100 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
+            <h4 class="text-sm font-bold text-church-900 term-cost-title">
+              <i class="fa-solid fa-file-invoice-dollar mr-2"></i>維持費の設定
+            </h4>
+          </header>
+          <div class="p-5 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1 term-fixed-cost">月額固定費</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2 text-slate-400 text-sm">¥</span>
+                  <input type="number" id="fixedCost" placeholder="320000"
+                    class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-church-900 outline-none"
+                    oninput="calculate()">
                 </div>
-
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 card">
-                    <div class="chart-container">
-                        <canvas id="cvpChart"></canvas>
-                    </div>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1 term-savings">現在の備え(預金)</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2 text-slate-400 text-sm">¥</span>
+                  <input type="number" id="savings" placeholder="380000"
+                    class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-church-900 outline-none"
+                    oninput="calculate()">
                 </div>
-
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden card">
-                    <table class="w-full text-left text-xs">
-                        <thead class="bg-slate-100 text-slate-500">
-                            <tr>
-                                <th class="px-4 py-3 font-bold term-col-q">人数規模</th>
-                                <th class="px-4 py-3 font-bold term-col-income">予測月収</th>
-                                <th class="px-4 py-3 font-bold term-col-balance text-center">月間収支</th>
-                                <th class="px-4 py-3 font-bold term-col-status text-right">判定</th>
-                            </tr>
-                        </thead>
-                        <tbody id="analysisTable" class="divide-y divide-slate-100"></tbody>
-                    </table>
-                </div>
+              </div>
             </div>
+          </div>
+        </section>
+
+        <!-- Assumptions -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <header class="bg-slate-100 px-5 py-3 border-b border-slate-200">
+            <h4 class="text-sm font-bold text-church-900">
+              <i class="fa-solid fa-sliders mr-2"></i>シミュレーション前提
+            </h4>
+          </header>
+          <div class="p-5 grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-1">人数あたり変動費（目安）</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-slate-400 text-sm">¥</span>
+                <input type="number" id="varCostPerPerson" placeholder="例: 200"
+                  class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-church-900 outline-none"
+                  oninput="calculate()">
+              </div>
+              <p class="text-[10px] text-slate-400 mt-1">茶菓・印刷・備品など（0でもOK）</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-1">損益分岐人数</label>
+              <div class="text-2xl font-extrabold text-slate-300 mt-1" id="breakEvenDisplay">---</div>
+              <p class="text-[10px] text-slate-400 mt-1">固定費 ÷（1人あたり貢献利益）</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Distribution Input -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <header class="bg-slate-100 px-5 py-3 border-b border-slate-200">
+            <h4 class="text-sm font-bold text-church-900 term-income-title">
+              <i class="fa-solid fa-layer-group mr-2"></i>献金の分布（レンジ別人数）
+            </h4>
+          </header>
+
+          <div class="p-5 space-y-3">
+            <p class="text-xs text-slate-500 leading-relaxed">
+              個人を特定しないために、金額レンジごとの人数だけ入れます（匿名・安全設計）。
+            </p>
+
+            <div class="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200">
+              <div class="text-xs font-bold text-slate-600">0円</div>
+              <div class="flex items-center space-x-2">
+                <span class="text-[10px] text-slate-400">人数</span>
+                <input type="number" id="d0" min="0" placeholder="0"
+                  class="w-20 border-slate-200 rounded p-1.5 text-sm font-bold text-center bg-white"
+                  oninput="calculate()">
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-100">
+              <div class="text-xs font-bold text-blue-800">1〜1,000円</div>
+              <div class="flex items-center space-x-2">
+                <span class="text-[10px] text-slate-400">人数</span>
+                <input type="number" id="d1" min="0" placeholder="0"
+                  class="w-20 border-blue-200 rounded p-1.5 text-sm font-bold text-center bg-white"
+                  oninput="calculate()">
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+              <div class="text-xs font-bold text-emerald-800">1,001〜5,000円</div>
+              <div class="flex items-center space-x-2">
+                <span class="text-[10px] text-slate-400">人数</span>
+                <input type="number" id="d2" min="0" placeholder="0"
+                  class="w-20 border-emerald-200 rounded p-1.5 text-sm font-bold text-center bg-white"
+                  oninput="calculate()">
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between bg-amber-50 p-3 rounded-lg border border-amber-100">
+              <div class="text-xs font-bold text-amber-800">5,001〜20,000円</div>
+              <div class="flex items-center space-x-2">
+                <span class="text-[10px] text-slate-400">人数</span>
+                <input type="number" id="d3" min="0" placeholder="0"
+                  class="w-20 border-amber-200 rounded p-1.5 text-sm font-bold text-center bg-white"
+                  oninput="calculate()">
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between bg-rose-50 p-3 rounded-lg border border-rose-100">
+              <div class="text-xs font-bold text-rose-800">20,001円〜（上限あり）</div>
+              <div class="flex items-center space-x-2">
+                <span class="text-[10px] text-slate-400">人数</span>
+                <input type="number" id="d4" min="0" placeholder="0"
+                  class="w-20 border-rose-200 rounded p-1.5 text-sm font-bold text-center bg-white"
+                  oninput="calculate()">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">上限（20,001円〜の最大値）</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2 text-slate-400 text-sm">¥</span>
+                  <input type="number" id="topCap" placeholder="例: 80000"
+                    class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-700"
+                    oninput="calculate()">
+                </div>
+              </div>
+              <div class="flex items-end justify-end">
+                <div class="text-right">
+                  <div class="text-xs font-bold text-slate-500">出席人数計</div>
+                  <div class="text-lg font-extrabold text-church-900"><span id="totalPeopleDisplay">0</span> 名</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[10px] text-slate-500 leading-relaxed">
+              <div class="font-bold text-slate-600 mb-1">計算ルール（最短実装）</div>
+              <ul class="list-disc ml-4 space-y-1">
+                <li>下振れ：各レンジの最小値で計算</li>
+                <li>標準：各レンジの中点で計算（中央値の代替）</li>
+                <li>上振れ：各レンジの最大値で計算</li>
+                <li>runway は下振れケースで表示（安全側）</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Column -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <div class="bg-church-900 rounded-xl shadow-lg p-6 text-white no-print">
+          <div class="flex justify-between items-end mb-4">
+            <div>
+              <h4 class="text-sm font-bold text-church-100 opacity-80 mb-1 term-slider-title">未来シミュレーション</h4>
+              <p class="text-xs text-slate-400">現在の分布（1人あたり期待値レンジ）のまま人数が増えたら？</p>
+            </div>
+            <div class="text-right">
+              <span class="text-4xl font-bold tracking-tight" id="simPeopleDisplay">0</span>
+              <span class="text-sm font-medium opacity-70">名</span>
+            </div>
+          </div>
+          <input type="range" id="peopleSlider" min="0" max="100" value="0"
+            class="w-full h-3 bg-church-600 rounded-lg appearance-none cursor-pointer hover:bg-church-500 transition"
+            oninput="updateSliderAndChart()">
+          <div class="flex justify-between text-xs text-slate-400 mt-2">
+            <span>0名</span><span>50名</span><span>100名</span>
+          </div>
         </div>
-    </main>
 
-    <footer class="text-center py-8 text-slate-400 text-xs no-print">
-        <p>Church Stewardship Manager Ver 3.0</p>
-    </footer>
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 card">
+          <div class="chart-container">
+            <canvas id="cvpChart"></canvas>
+          </div>
+        </div>
 
-    <script>
-        // --- 用語辞書 ---
-        const terms = {
-            business: {
-                incomeSummary: "月間売上予測", balanceSummary: "営業利益予測", balanceDesc: "売上 - 固定費",
-                lifeLabel: "バーンレート予測", lifeDesc: "資金ショートまでの期間",
-                costTitle: "固定費設定", fixedCost: "月額固定費", savings: "内部留保",
-                incomeTitle: "顧客LTV設定", sliderTitle: "規模拡大シミュレーション",
-                colQ: "顧客数", colIncome: "売上高", colBalance: "営業利益", colStatus: "判定",
-                modeName: "経営モード", icon: "fa-briefcase"
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden card">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-500">
+              <tr>
+                <th class="px-4 py-3 font-bold term-col-q">人数規模</th>
+                <th class="px-4 py-3 font-bold term-col-income">予測月収</th>
+                <th class="px-4 py-3 font-bold term-col-balance text-center">月間収支</th>
+                <th class="px-4 py-3 font-bold term-col-status text-right">判定</th>
+              </tr>
+            </thead>
+            <tbody id="analysisTable" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <footer class="text-center py-8 text-slate-400 text-xs no-print">
+    <p>Church Stewardship Manager Ver 3.1 (Simulator)</p>
+  </footer>
+
+  <script>
+    // --- 用語辞書（モード切替：任意） ---
+    const terms = {
+      business: {
+        incomeSummary: "月間売上予測（レンジ）",
+        balanceSummary: "営業利益予測（レンジ）",
+        balanceDesc: "売上 - 固定費",
+        lifeLabel: "バーンレート予測",
+        lifeDesc: "下振れケースでの資金ショートまで",
+        costTitle: "固定費設定",
+        fixedCost: "月額固定費",
+        savings: "内部留保",
+        incomeTitle: "顧客の支払い分布（レンジ別人数）",
+        sliderTitle: "規模拡大シミュレーション",
+        colQ: "顧客数",
+        colIncome: "売上高（レンジ）",
+        colBalance: "営業利益",
+        colStatus: "判定",
+        modeName: "経営モード",
+        icon: "fa-briefcase"
+      },
+      ministry: {
+        incomeSummary: "現在の月間収入予測（レンジ）",
+        balanceSummary: "月間収支バランス（レンジ）",
+        balanceDesc: "収入 - 宣教固定費",
+        lifeLabel: "宣教継続可能期間",
+        lifeDesc: "下振れケースでの目安",
+        costTitle: "維持費の設定",
+        fixedCost: "宣教固定費",
+        savings: "次月繰越金(備え)",
+        incomeTitle: "献金の分布（レンジ別人数）",
+        sliderTitle: "未来シミュレーション",
+        colQ: "人数規模",
+        colIncome: "予測月収（レンジ）",
+        colBalance: "月間収支",
+        colStatus: "状態",
+        modeName: "牧会モード",
+        icon: "fa-cross"
+      }
+    };
+
+    let currentMode = 'ministry';
+    let chart = null;
+
+    // 互換用：標準（中点）平均単価
+    let calculatedAvgPrice = 0;
+
+    function applyMode(mode) {
+      currentMode = mode;
+      const t = terms[currentMode];
+      document.getElementById('mode-text').innerText = t.modeName;
+      document.getElementById('mode-icon').className = `fa-solid ${t.icon} text-xs`;
+
+      Object.keys(t).forEach(key => {
+        const className = `.term-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
+        document.querySelectorAll(className).forEach(el => el.innerText = t[key]);
+      });
+    }
+
+    function toggleMode() {
+      applyMode(currentMode === 'business' ? 'ministry' : 'business');
+    }
+
+    function updateSliderAndChart() {
+      const val = document.getElementById('peopleSlider').value;
+      document.getElementById('simPeopleDisplay').innerText = val;
+      renderChartAndTable();
+      saveData();
+    }
+
+    function yen(n) {
+      return `¥${Math.round(n).toLocaleString()}`;
+    }
+
+    function readCount(id) {
+      return Math.max(0, parseFloat(document.getElementById(id).value) || 0);
+    }
+
+    // 分布レンジ（min/max）定義。d4は上限(topCap)で可変
+    function getDistributionBuckets() {
+      const cap = parseFloat(document.getElementById('topCap').value) || 80000;
+      const safeCap = Math.max(20001, cap); // 下限を守る
+      return [
+        { id: 'd0', min: 0,     max: 0       },
+        { id: 'd1', min: 1,     max: 1000    },
+        { id: 'd2', min: 1001,  max: 5000    },
+        { id: 'd3', min: 5001,  max: 20000   },
+        { id: 'd4', min: 20001, max: safeCap }
+      ];
+    }
+
+    function computeIncomeScenarios() {
+      const buckets = getDistributionBuckets();
+
+      let people = 0;
+      let low = 0;
+      let mid = 0;   // “標準”としてレンジ中点
+      let high = 0;
+
+      buckets.forEach(b => {
+        const c = readCount(b.id);
+        people += c;
+        low  += b.min * c;
+        mid  += ((b.min + b.max) / 2) * c;
+        high += b.max * c;
+      });
+
+      const avgLow  = people > 0 ? low  / people : 0;
+      const avgMid  = people > 0 ? mid  / people : 0;
+      const avgHigh = people > 0 ? high / people : 0;
+
+      return { people, low, mid, high, avgLow, avgMid, avgHigh };
+    }
+
+    function calculate() {
+      const fixedCost = parseFloat(document.getElementById('fixedCost').value) || 0;
+      const savings   = parseFloat(document.getElementById('savings').value) || 0;
+      const v         = parseFloat(document.getElementById('varCostPerPerson').value) || 0;
+
+      const inc = computeIncomeScenarios();
+
+      document.getElementById('totalPeopleDisplay').innerText = inc.people;
+
+      // 収入（レンジ）
+      if (inc.people > 0) {
+        document.getElementById('totalIncomeDisplay').innerText =
+          `${yen(inc.mid)}（${yen(inc.low)}〜${yen(inc.high)}）`;
+        document.getElementById('avgPriceDisplay').innerText =
+          `${yen(inc.avgMid)}（${yen(inc.avgLow)}〜${yen(inc.avgHigh)}）`;
+      } else {
+        document.getElementById('totalIncomeDisplay').innerText = "¥0";
+        document.getElementById('avgPriceDisplay').innerText = "¥0";
+      }
+
+      // 互換（標準平均単価）
+      calculatedAvgPrice = inc.avgMid;
+
+      // 月間収支（標準 + 最悪）
+      const balMid = inc.mid - fixedCost;
+      const balLow = inc.low - fixedCost;
+
+      const balEl = document.getElementById('monthlyBalanceDisplay');
+      if (fixedCost > 0 && inc.people > 0) {
+        const main  = `${balMid >= 0 ? '+' : ''}${yen(balMid)}`;
+        const worst = `最悪: ${balLow >= 0 ? '+' : ''}${yen(balLow)}`;
+        balEl.innerText = `${main}\n${worst}`;
+        balEl.className = balMid >= 0
+          ? "text-3xl font-bold text-emerald-600 mt-2 whitespace-pre-line"
+          : "text-3xl font-bold text-red-500 mt-2 whitespace-pre-line";
+      } else if (fixedCost > 0 && inc.people === 0) {
+        balEl.innerText = "---";
+        balEl.className = "text-3xl font-bold text-slate-300 mt-2";
+      } else {
+        balEl.innerText = "---";
+        balEl.className = "text-3xl font-bold text-slate-300 mt-2";
+      }
+
+      // runway（下振れで算出 = 安全側）
+      const lifeEl = document.getElementById('lifeDisplay');
+      const burnLow = fixedCost - inc.low; // 低収入時の月次資金減少（正なら減る）
+
+      if (fixedCost > 0 && inc.people > 0 && burnLow > 0 && savings > 0) {
+        const months = (savings / burnLow).toFixed(1);
+        lifeEl.innerText = parseFloat(months) < 120 ? `${months}ヶ月` : "10年以上";
+        lifeEl.className = "text-3xl font-bold text-amber-500 mt-2";
+      } else if (fixedCost > 0 && inc.people > 0 && (inc.low - fixedCost) >= 0) {
+        lifeEl.innerText = "維持可能";
+        lifeEl.className = "text-3xl font-bold text-emerald-600 mt-2";
+      } else {
+        lifeEl.innerText = "---";
+        lifeEl.className = "text-3xl font-bold text-slate-300 mt-2";
+      }
+
+      // 損益分岐人数（標準の1人あたり献金 - 変動費/人）
+      const contrib = inc.avgMid - v;
+      const beEl = document.getElementById('breakEvenDisplay');
+
+      if (fixedCost > 0 && inc.people > 0 && contrib > 0) {
+        const be = Math.ceil(fixedCost / contrib);
+        beEl.innerText = `${be}名`;
+        beEl.className = "text-2xl font-extrabold text-church-900 mt-1";
+      } else if (fixedCost > 0 && inc.people > 0 && contrib <= 0) {
+        beEl.innerText = "黒字化条件未達";
+        beEl.className = "text-2xl font-extrabold text-red-500 mt-1";
+      } else {
+        beEl.innerText = "---";
+        beEl.className = "text-2xl font-extrabold text-slate-300 mt-1";
+      }
+
+      renderChartAndTable();
+      saveData();
+    }
+
+    function renderChartAndTable() {
+      const fixedCost = parseFloat(document.getElementById('fixedCost').value) || 0;
+      const v         = parseFloat(document.getElementById('varCostPerPerson').value) || 0;
+      const sliderVal = parseInt(document.getElementById('peopleSlider').value) || 0;
+
+      const inc = computeIncomeScenarios();
+      const avgLow  = inc.avgLow;
+      const avgMid  = inc.avgMid;
+      const avgHigh = inc.avgHigh;
+
+      // ---- Table ----
+      const tbody = document.getElementById('analysisTable');
+      tbody.innerHTML = '';
+
+      if (fixedCost > 0 && inc.people > 0 && avgMid > 0) {
+        const points = [10, 15, 20, 30, 40, 50];
+        if (sliderVal > 0 && !points.includes(sliderVal)) points.push(sliderVal);
+        points.sort((a,b) => a-b);
+
+        points.forEach(q => {
+          const incomeM = avgMid * q;
+          const incomeL = avgLow * q;
+          const incomeH = avgHigh * q;
+
+          const totalCost = fixedCost + (v * q);
+          const bal = incomeM - totalCost;
+
+          const tr = document.createElement('tr');
+          tr.className = (q === sliderVal)
+            ? "bg-church-900 text-white font-bold transition-colors duration-300"
+            : "hover:bg-slate-50";
+
+          tr.innerHTML = `
+            <td class="px-4 py-3">${q}名</td>
+            <td class="px-4 py-3">
+              ${yen(incomeM)}
+              <div class="text-[10px] ${q===sliderVal ? 'text-slate-200' : 'text-slate-400'}">
+                ${yen(incomeL)}〜${yen(incomeH)}
+              </div>
+            </td>
+            <td class="px-4 py-3 text-center">${bal >= 0 ? '+' : ''}${yen(bal)}</td>
+            <td class="px-4 py-3 text-right">
+              <span class="px-2 py-1 rounded-full text-[10px] ${
+                q === sliderVal
+                  ? (bal >= 0 ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white')
+                  : (bal >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-600')
+              }">${bal >= 0 ? '黒字' : '不足'}</span>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } else {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">数値を入力すると分析が表示されます</td></tr>';
+      }
+
+      // ---- Chart ----
+      const ctx = document.getElementById('cvpChart').getContext('2d');
+      const labels = Array.from({length: 61}, (_, i) => i);
+
+      const costData   = labels.map(x => fixedCost + (v * x));
+      const incomeLow  = labels.map(x => avgLow  * x);
+      const incomeMid  = labels.map(x => avgMid  * x);
+      const incomeHigh = labels.map(x => avgHigh * x);
+
+      if (chart) chart.destroy();
+
+      // シミュ点：標準で表示（黒字/赤字色）
+      let pointColor = '#cbd5e1';
+      if (fixedCost > 0 && inc.people > 0 && avgMid > 0) {
+        const balAt = (avgMid * sliderVal) - (fixedCost + v * sliderVal);
+        pointColor = balAt >= 0 ? '#10b981' : '#ef4444';
+      }
+
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: '総費用ライン',
+              data: costData,
+              borderColor: '#ef4444',
+              borderWidth: 2,
+              pointRadius: 0,
+              fill: false
             },
-            ministry: {
-                incomeSummary: "現在の月間収入予測", balanceSummary: "月間収支バランス", balanceDesc: "収入 - 宣教固定費",
-                lifeLabel: "宣教継続可能期間", lifeDesc: "現在の備えが尽きるまで",
-                costTitle: "維持費の設定", fixedCost: "宣教固定費", savings: "次月繰越金(備え)",
-                incomeTitle: "献金の内訳（人数入力）", sliderTitle: "未来シミュレーション",
-                colQ: "人数規模", colIncome: "予測月収", colBalance: "月間収支", colStatus: "状態",
-                modeName: "牧会モード", icon: "fa-cross"
+            {
+              label: '収入（下振れ）',
+              data: incomeLow,
+              borderColor: '#60a5fa',
+              borderWidth: 2,
+              pointRadius: 0,
+              fill: false
+            },
+            {
+              label: '収入（標準）',
+              data: incomeMid,
+              borderColor: '#10b981',
+              borderWidth: 2,
+              pointRadius: 0,
+              fill: false
+            },
+            {
+              label: '収入（上振れ）',
+              data: incomeHigh,
+              borderColor: '#f59e0b',
+              borderWidth: 2,
+              pointRadius: 0,
+              fill: false
+            },
+            {
+              label: 'シミュレーション位置（標準）',
+              data: labels.map(x => x === sliderVal ? (avgMid * x) : null),
+              pointBackgroundColor: pointColor,
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointRadius: 6,
+              showLine: false
             }
-        };
-
-        let currentMode = 'ministry';
-        let chart = null;
-        // 平均単価（計算結果）を保持する変数
-        let calculatedAvgPrice = 0;
-
-        function toggleMode() {
-            currentMode = currentMode === 'business' ? 'ministry' : 'business';
-            const t = terms[currentMode];
-            document.getElementById('mode-text').innerText = t.modeName;
-            document.getElementById('mode-icon').className = `fa-solid ${t.icon} text-xs`;
-            
-            // クラス名でテキスト置換
-            Object.keys(t).forEach(key => {
-                const el = document.querySelector(`.term-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`);
-                if (el) el.innerText = t[key];
-            });
-        }
-
-        function updateSliderAndChart() {
-            const val = document.getElementById('peopleSlider').value;
-            document.getElementById('simPeopleDisplay').innerText = val;
-            renderChartAndTable();
-        }
-
-        function calculate() {
-            // 1. 入力値の取得
-            const fixedCost = parseFloat(document.getElementById('fixedCost').value) || 0;
-            const savings = parseFloat(document.getElementById('savings').value) || 0;
-
-            const pA = parseFloat(document.getElementById('priceA').value) || 0;
-            const cA = parseFloat(document.getElementById('countA').value) || 0;
-            const pB = parseFloat(document.getElementById('priceB').value) || 0;
-            const cB = parseFloat(document.getElementById('countB').value) || 0;
-            const pC = parseFloat(document.getElementById('priceC').value) || 0;
-            const cC = parseFloat(document.getElementById('countC').value) || 0;
-
-            // 2. 小計と合計の計算
-            const subA = pA * cA;
-            const subB = pB * cB;
-            const subC = pC * cC;
-            const totalIncome = subA + subB + subC;
-            const totalPeople = cA + cB + cC;
-
-            // 3. 画面表示の更新（小計）
-            document.getElementById('subtotalA').innerText = pA && cA ? `¥${subA.toLocaleString()}` : "¥0";
-            document.getElementById('subtotalB').innerText = pB && cB ? `¥${subB.toLocaleString()}` : "¥0";
-            document.getElementById('subtotalC').innerText = pC && cC ? `¥${subC.toLocaleString()}` : "¥0";
-            
-            document.getElementById('totalPeopleDisplay').innerText = totalPeople;
-            document.getElementById('totalIncomeDisplay').innerText = `¥${totalIncome.toLocaleString()}`;
-
-            // 4. 平均単価の計算（シミュレーション用）
-            calculatedAvgPrice = totalPeople > 0 ? totalIncome / totalPeople : 0;
-            document.getElementById('avgPriceDisplay').innerText = `¥${Math.round(calculatedAvgPrice).toLocaleString()}`;
-
-            // 5. サマリー表示（現在の収支）
-            const balance = totalIncome - fixedCost;
-            const balEl = document.getElementById('monthlyBalanceDisplay');
-            
-            if (fixedCost > 0) {
-                balEl.innerText = (balance > 0 ? "+" : "") + `¥${balance.toLocaleString()}`;
-                balEl.className = balance >= 0 
-                    ? "text-3xl font-bold text-emerald-600 mt-2" 
-                    : "text-3xl font-bold text-red-500 mt-2";
-            } else {
-                balEl.innerText = "---";
-                balEl.className = "text-3xl font-bold text-slate-300 mt-2";
-            }
-
-            // 6. 余命計算
-            const lifeEl = document.getElementById('lifeDisplay');
-            if (fixedCost > 0 && balance < 0 && savings > 0) {
-                const months = (savings / Math.abs(balance)).toFixed(1);
-                lifeEl.innerText = months < 120 ? months + "ヶ月" : "10年以上";
-                lifeEl.className = "text-3xl font-bold text-amber-500 mt-2";
-            } else if (fixedCost > 0 && balance >= 0) {
-                lifeEl.innerText = "維持可能";
-                lifeEl.className = "text-3xl font-bold text-emerald-600 mt-2";
-            } else {
-                lifeEl.innerText = "---";
-                lifeEl.className = "text-3xl font-bold text-slate-300 mt-2";
-            }
-
-            // 7. スライダーの初期値を現在の人数に合わせる（初回のみ、または同期させたい場合）
-            // 今回はユーザーが自由に動かせるように同期はしないが、グラフ更新は呼ぶ
-            renderChartAndTable();
-            saveData();
-        }
-
-        function renderChartAndTable() {
-            const fixedCost = parseFloat(document.getElementById('fixedCost').value) || 0;
-            const sliderVal = parseInt(document.getElementById('peopleSlider').value);
-            const v = 83; // 変動費固定
-
-            // テーブル更新
-            const tbody = document.getElementById('analysisTable');
-            tbody.innerHTML = '';
-            
-            if (fixedCost > 0 && calculatedAvgPrice > 0) {
-                // 表示するポイント: 現在のスライダー値周辺 + 固定ポイント
-                const points = [10, 15, 20, 30, 40, 50];
-                // スライダーの値を追加してソート（重複排除）
-                if(sliderVal > 0 && !points.includes(sliderVal)) points.push(sliderVal);
-                points.sort((a,b) => a-b);
-
-                points.forEach(q => {
-                    const estimatedIncome = calculatedAvgPrice * q;
-                    const totalCost = fixedCost + (v * q);
-                    const bal = estimatedIncome - totalCost;
-                    
-                    const tr = document.createElement('tr');
-                    // スライダーの値と同じ行をハイライト
-                    if (q === sliderVal) tr.className = "bg-church-900 text-white font-bold transition-colors duration-300";
-                    else tr.className = "hover:bg-slate-50";
-
-                    tr.innerHTML = `
-                        <td class="px-4 py-3">${q}名</td>
-                        <td class="px-4 py-3">¥${Math.round(estimatedIncome).toLocaleString()}</td>
-                        <td class="px-4 py-3 text-center">
-                            ${bal >= 0 ? '+' : ''}¥${Math.round(bal).toLocaleString()}
-                        </td>
-                        <td class="px-4 py-3 text-right">
-                            <span class="px-2 py-1 rounded-full text-[10px] ${
-                                q === sliderVal 
-                                    ? (bal >= 0 ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white')
-                                    : (bal >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-600')
-                            }">
-                                ${bal >= 0 ? '黒字' : '不足'}
-                            </span>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">数値を入力すると分析が表示されます</td></tr>';
-            }
-
-            // グラフ更新
-            const ctx = document.getElementById('cvpChart').getContext('2d');
-            const labels = Array.from({length: 61}, (_, i) => i); // 0 to 60
-            
-            // コスト線: Fixed + v*x
-            const costData = labels.map(x => fixedCost + (v * x));
-            // 収入線: AvgP * x
-            const incomeData = labels.map(x => calculatedAvgPrice * x);
-
-            if (chart) chart.destroy();
-
-            // スライダーの値の位置を示すアノテーション（ポイント）
-            let pointColor = '#cbd5e1';
-            let pointRadius = 0;
-            if (fixedCost > 0 && calculatedAvgPrice > 0) {
-                 const currentBal = (calculatedAvgPrice * sliderVal) - (fixedCost + v*sliderVal);
-                 pointColor = currentBal >= 0 ? '#10b981' : '#ef4444'; // Green or Red
-            }
-
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: '総費用ライン',
-                            data: costData,
-                            borderColor: '#ef4444', // Red
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            fill: false
-                        },
-                        {
-                            label: '予測収入ライン',
-                            data: incomeData,
-                            borderColor: '#10b981', // Emerald
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            fill: false
-                        },
-                        {
-                            label: 'シミュレーション位置',
-                            data: labels.map(x => x === sliderVal ? (calculatedAvgPrice * x) : null),
-                            pointBackgroundColor: pointColor,
-                            pointBorderColor: '#fff',
-                            pointBorderWidth: 2,
-                            pointRadius: 6, // Show point only at slider val
-                            showLine: false
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
-                        tooltip: { 
-                            callbacks: {
-                                label: function(context) {
-                                    if (context.datasetIndex === 2) return `現在: ${context.raw.toLocaleString()}円`;
-                                    return context.dataset.label + `: ¥${context.raw.toLocaleString()}`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { title: { display: true, text: '人数' }, ticks: { stepSize: 10 } },
-                        y: { title: { display: true, text: '金額' }, min: 0 }
-                    }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  if (context.raw === null || context.raw === undefined) return '';
+                  const v = Number(context.raw);
+                  return `${context.dataset.label}: ${yen(v)}`;
                 }
-            });
-        }
-
-        function saveData() {
-            const data = {
-                fixedCost: document.getElementById('fixedCost').value,
-                savings: document.getElementById('savings').value,
-                priceA: document.getElementById('priceA').value, countA: document.getElementById('countA').value,
-                priceB: document.getElementById('priceB').value, countB: document.getElementById('countB').value,
-                priceC: document.getElementById('priceC').value, countC: document.getElementById('countC').value,
-                slider: document.getElementById('peopleSlider').value
-            };
-            localStorage.setItem('churchManagerV3', JSON.stringify(data));
-        }
-
-        function loadData() {
-            const saved = localStorage.getItem('churchManagerV3');
-            if (saved) {
-                const data = JSON.parse(saved);
-                document.getElementById('fixedCost').value = data.fixedCost || "";
-                document.getElementById('savings').value = data.savings || "";
-                document.getElementById('priceA').value = data.priceA || ""; document.getElementById('countA').value = data.countA || "";
-                document.getElementById('priceB').value = data.priceB || ""; document.getElementById('countB').value = data.countB || "";
-                document.getElementById('priceC').value = data.priceC || ""; document.getElementById('countC').value = data.countC || "";
-                if(data.slider) document.getElementById('peopleSlider').value = data.slider;
-                calculate(); // Calculate totals based on loaded data
-                updateSliderAndChart();
+              }
             }
+          },
+          scales: {
+            x: { title: { display: true, text: '人数' }, ticks: { stepSize: 10 } },
+            y: { title: { display: true, text: '金額' } }
+          }
         }
+      });
+    }
 
-        window.onload = () => { loadData(); toggleMode(); };
+    function saveData() {
+      const data = {
+        fixedCost: document.getElementById('fixedCost').value,
+        savings: document.getElementById('savings').value,
+        varCostPerPerson: document.getElementById('varCostPerPerson').value,
+        topCap: document.getElementById('topCap').value,
+        d0: document.getElementById('d0').value,
+        d1: document.getElementById('d1').value,
+        d2: document.getElementById('d2').value,
+        d3: document.getElementById('d3').value,
+        d4: document.getElementById('d4').value,
+        slider: document.getElementById('peopleSlider').value,
+        mode: currentMode
+      };
+      localStorage.setItem('churchManagerV31', JSON.stringify(data));
+    }
 
-    </script>
+    function loadData() {
+      const saved = localStorage.getItem('churchManagerV31');
+      if (!saved) return;
+
+      try {
+        const data = JSON.parse(saved);
+        document.getElementById('fixedCost').value = data.fixedCost || "";
+        document.getElementById('savings').value = data.savings || "";
+        document.getElementById('varCostPerPerson').value = data.varCostPerPerson || "";
+        document.getElementById('topCap').value = data.topCap || "";
+        ['d0','d1','d2','d3','d4'].forEach(id => {
+          document.getElementById(id).value = data[id] || "";
+        });
+        if (data.slider !== undefined && data.slider !== null) {
+          document.getElementById('peopleSlider').value = data.slider;
+          document.getElementById('simPeopleDisplay').innerText = data.slider;
+        }
+        if (data.mode) currentMode = data.mode;
+      } catch (e) {
+        // 壊れたデータは無視
+      }
+    }
+
+    window.onload = () => {
+      loadData();
+      applyMode(currentMode || 'ministry');
+      // スライダー表示の初期同期
+      document.getElementById('simPeopleDisplay').innerText = document.getElementById('peopleSlider').value;
+      calculate();
+    };
+  </script>
 </body>
 </html>
