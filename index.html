@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>教会財務シミュレーター Produced by KoTsukuda</title>
+    <title>Church Stewardship Manager Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -33,7 +33,6 @@
         }
         .chart-container { position: relative; height: 350px; width: 100%; }
         input[type="range"] { accent-color: #1e293b; }
-        /* 入力欄のプレースホルダーを見やすく */
         input::placeholder { color: #cbd5e1; font-size: 0.75rem; }
     </style>
 </head>
@@ -62,8 +61,8 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 card">
                 <p class="text-xs font-bold text-slate-500 uppercase term-target-label tracking-wider">一人当たりの支え(必要額)</p>
-                <h3 class="text-2xl font-bold text-church-900 mt-1" id="targetPriceDisplay">¥0</h3>
-                <p class="text-[10px] text-slate-400 mt-2">※想定出席人数 <span id="currentQDisplay">1</span>名 に基づく</p>
+                <h3 class="text-2xl font-bold text-church-900 mt-1" id="targetPriceDisplay">¥---</h3>
+                <p class="text-[10px] text-slate-400 mt-2">※想定出席人数 <span id="currentQDisplay">0</span>名 に基づく</p>
             </div>
             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 card">
                 <p class="text-xs font-bold text-slate-500 uppercase term-gap-label tracking-wider">祈りの課題 (不足額)</p>
@@ -87,48 +86,51 @@
                     <div class="p-5 space-y-5">
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1 term-fixed-cost">宣教固定費 (月額)</label>
-                            <input type="number" id="fixedCost" placeholder="例: 320000" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-church-900 outline-none transition-all" value="" oninput="saveAndRender()">
+                            <input type="number" id="fixedCost" placeholder="月額支出の合計を入力" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-church-900 outline-none transition-all" value="" oninput="saveAndRender()">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1 term-savings">次月繰越金 (備え)</label>
-                            <input type="number" id="savings" placeholder="例: 380000" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-church-900 outline-none transition-all" value="" oninput="saveAndRender()">
+                            <label class="block text-xs font-bold text-slate-600 mb-1 term-var-cost">一人当たりの実費</label>
+                            <input type="number" id="variableCost" placeholder="週報やパン代などの単価" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-church-900 outline-none transition-all" value="" oninput="saveAndRender()">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1 term-savings">次月繰越金 (現在の備え)</label>
+                            <input type="number" id="savings" placeholder="通帳残高などを入力" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-church-900 outline-none transition-all" value="" oninput="saveAndRender()">
                         </div>
                         <div class="pt-4 border-t border-slate-100">
-                            <label class="block text-xs font-bold text-slate-600 mb-3 term-slider">想定人数: <span id="sliderVal" class="text-church-900">1</span>名</label>
-                            <input type="range" id="peopleSlider" min="1" max="100" value="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" oninput="updateSlider(); saveAndRender()">
+                            <label class="block text-xs font-bold text-slate-600 mb-3 term-slider">シミュレーション人数: <span id="sliderVal" class="text-church-900">0</span>名</label>
+                            <input type="range" id="peopleSlider" min="0" max="100" value="0" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" oninput="updateSlider(); saveAndRender()">
                         </div>
                     </div>
                 </section>
 
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <header class="bg-slate-100 px-4 py-3 border-b border-slate-200">
-                        <h4 class="text-sm font-bold text-church-900 term-income-title">献金シミュレーション</h4>
+                        <h4 class="text-sm font-bold text-church-900 term-income-title">献金ポートフォリオ</h4>
                     </header>
                     <div class="p-5 space-y-4">
-                        <p class="text-[10px] text-slate-400 mb-2 leading-relaxed">※各層の平均額と構成比を入力してください。</p>
-                        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg">
                             <div class="col-span-1">
-                                <label class="text-[10px] font-black text-slate-400">層A 金額</label>
-                                <input type="number" id="pA" placeholder="20000" class="w-full border-slate-200 rounded-md p-2 text-xs" value="" oninput="saveAndRender()">
+                                <label class="text-[10px] font-black text-slate-400">献金層A (金額)</label>
+                                <input type="number" id="pA" placeholder="例: 20000" class="w-full border-slate-200 rounded-md p-2 text-xs" value="" oninput="saveAndRender()">
                             </div>
                             <div class="col-span-1">
-                                <label class="text-[10px] font-black text-slate-400">比率(%)</label>
-                                <input type="number" id="rA" placeholder="30" class="w-full border-slate-200 rounded-md p-2 text-xs" value="" oninput="saveAndRender()">
+                                <label class="text-[10px] font-black text-slate-400">構成比 (%)</label>
+                                <input type="number" id="rA" placeholder="例: 30" class="w-full border-slate-200 rounded-md p-2 text-xs" value="" oninput="saveAndRender()">
                             </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg">
                             <div class="col-span-1">
-                                <label class="text-[10px] font-black text-slate-400">層B 金額</label>
-                                <input type="number" id="pB" placeholder="5000" class="w-full border-slate-200 rounded-md p-2 text-xs" value="" oninput="saveAndRender()">
+                                <label class="text-[10px] font-black text-slate-400">献金層B (金額)</label>
+                                <input type="number" id="pB" placeholder="例: 5000" class="w-full border-slate-200 rounded-md p-2 text-xs" value="" oninput="saveAndRender()">
                             </div>
                             <div class="col-span-1">
-                                <label class="text-[10px] font-black text-slate-400">比率(%)</label>
-                                <input type="number" id="rB" placeholder="50" class="w-full border-slate-200 rounded-md p-2 text-xs" value="" oninput="saveAndRender()">
+                                <label class="text-[10px] font-black text-slate-400">構成比 (%)</label>
+                                <input type="number" id="rB" placeholder="例: 50" class="w-full border-slate-200 rounded-md p-2 text-xs" value="" oninput="saveAndRender()">
                             </div>
                         </div>
                         <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
-                            <span class="text-xs font-bold text-slate-600 term-avg-p">平均献金目安:</span>
-                            <span id="weightedPDisplay" class="text-sm font-bold text-church-900">¥0</span>
+                            <span class="text-xs font-bold text-slate-600 term-avg-p">平均献金見込:</span>
+                            <span id="weightedPDisplay" class="text-sm font-bold text-church-900">¥---</span>
                         </div>
                     </div>
                 </section>
@@ -146,17 +148,16 @@
                     <table class="w-full text-left text-[11px] md:text-xs">
                         <thead class="bg-slate-100 text-slate-500">
                             <tr>
-                                <th class="px-6 py-4 font-bold term-col-q uppercase">礼拝出席者</th>
-                                <th class="px-6 py-4 font-bold term-col-ac uppercase">必要負担</th>
-                                <th class="px-6 py-4 font-bold term-col-balance uppercase text-center">月間収支</th>
-                                <th class="px-6 py-4 font-bold term-col-status uppercase text-right">状態</th>
+                                <th class="px-6 py-4 font-bold term-col-q">礼拝出席者</th>
+                                <th class="px-6 py-4 font-bold term-col-ac">必要負担</th>
+                                <th class="px-6 py-4 font-bold term-col-balance text-center">月間収支</th>
+                                <th class="px-6 py-4 font-bold term-col-status text-right">判定</th>
                             </tr>
                         </thead>
-                        <tbody id="analysisTable" class="divide-y divide-slate-100">
-                            </tbody>
+                        <tbody id="analysisTable" class="divide-y divide-slate-100"></tbody>
                     </table>
-                    <div id="emptyTableNotice" class="p-10 text-center text-slate-400 text-xs italic">
-                        数値を入力すると、人数別の詳細分析が表示されます。
+                    <div id="emptyNotice" class="p-10 text-center text-slate-400 text-xs italic">
+                        固定費を入力すると、人数別の詳細分析が表示されます。
                     </div>
                 </div>
             </div>
@@ -166,16 +167,14 @@
     <script>
         const terms = {
             business: {
-                targetLabel: "現状維持に必要な単価(AC)", gapLabel: "不足額", gapDesc: "目標単価との差", lifeLabel: "資金持続予測", lifeDesc: "キャッシュ枯渇まで",
-                costTitle: "経営コスト設定", fixedCost: "固定費(月額)", savings: "現預金残高", incomeTitle: "収益構造予測", avgP: "平均単価(AR):",
-                slider: "想定顧客数", chartTitle: "損益分岐構造分析", tableTitle: "人数別収支表", colQ: "人数", colAC: "必要単価", colBalance: "月間損益",
-                colStatus: "判定", modeName: "経営モード", icon: "fa-briefcase"
+                targetLabel: "損益分岐単価(AC)", gapLabel: "単価不足額", gapDesc: "必要額と予測額の差", lifeLabel: "資金持続予測", lifeDesc: "資金枯渇までの期間",
+                costTitle: "経営コスト設定", fixedCost: "固定費 (月額)", varCost: "単位可変費", savings: "現預金残高", incomeTitle: "収益構成予測", avgP: "平均単価(P):",
+                slider: "想定顧客数", chartTitle: "損益構造分析", colQ: "人数", colAC: "必要単価", colBalance: "月間収支", colStatus: "判定", modeName: "経営モード", icon: "fa-briefcase"
             },
             ministry: {
-                targetLabel: "一人当たりの支え(必要額)", gapLabel: "祈りの課題 (不足額)", gapDesc: "目標献金額との差", lifeLabel: "宣教継続可能期間", lifeDesc: "備えが続く期間",
-                costTitle: "宣教維持費の設定", fixedCost: "宣教固定費", savings: "次月繰越金", incomeTitle: "献金シミュレーション", avgP: "平均献金目安:",
-                slider: "礼拝出席人数", chartTitle: "教会財政の構造分析", tableTitle: "必要献金額の早見表", colQ: "礼拝出席者", colAC: "一人当たりの必要負担", colBalance: "月間収支見込",
-                colStatus: "教会の状態", modeName: "牧会モード", icon: "fa-cross"
+                targetLabel: "一人当たりの支え(必要額)", gapLabel: "祈りの課題 (不足額)", gapDesc: "必要額と目標献金額の差", lifeLabel: "宣教継続可能期間", lifeDesc: "現在の備えが続く期間",
+                costTitle: "宣教維持費の設定", fixedCost: "宣教固定費 (月額)", varCost: "一人当たりの実費", savings: "次月繰越金", incomeTitle: "献金シミュレーション", avgP: "平均献金目安:",
+                slider: "礼拝出席人数", chartTitle: "教会財政の構造分析", colQ: "出席者", colAC: "一人当たりの必要負担", colBalance: "月間収支見込", colStatus: "教会の状態", modeName: "牧会モード", icon: "fa-cross"
             }
         };
 
@@ -193,148 +192,100 @@
             const t = terms[currentMode];
             document.getElementById('mode-text').innerText = t.modeName;
             document.getElementById('mode-icon').className = `fa-solid ${t.icon} text-xs`;
-            
-            Object.keys(t).forEach(key => {
-                const el = document.querySelector(`.term-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`);
-                if (el) el.innerText = t[key];
+            Object.keys(t).forEach(k => {
+                const el = document.querySelector(`.term-${k.replace(/([A-Z])/g, "-$1").toLowerCase()}`);
+                if (el) el.innerText = t[k];
             });
             render();
         }
 
         function saveAndRender() {
-            const data = {
-                fixedCost: document.getElementById('fixedCost').value,
-                savings: document.getElementById('savings').value,
-                peopleSlider: document.getElementById('peopleSlider').value,
-                pA: document.getElementById('pA').value,
-                rA: document.getElementById('rA').value,
-                pB: document.getElementById('pB').value,
-                rB: document.getElementById('rB').value
-            };
-            localStorage.setItem('churchCleanFinanceData', JSON.stringify(data));
+            const data = {};
+            ['fixedCost', 'variableCost', 'savings', 'pA', 'rA', 'pB', 'rB', 'peopleSlider'].forEach(id => {
+                data[id] = document.getElementById(id).value;
+            });
+            localStorage.setItem('churchProCleanData', JSON.stringify(data));
             render();
         }
 
         function loadData() {
-            const saved = localStorage.getItem('churchCleanFinanceData');
+            const saved = localStorage.getItem('churchProCleanData');
             if (saved) {
                 const data = JSON.parse(saved);
-                document.getElementById('fixedCost').value = data.fixedCost || "";
-                document.getElementById('savings').value = data.savings || "";
-                document.getElementById('peopleSlider').value = data.peopleSlider || 1;
-                document.getElementById('pA').value = data.pA || "";
-                document.getElementById('rA').value = data.rA || "";
-                document.getElementById('pB').value = data.pB || "";
-                document.getElementById('rB').value = data.rB || "";
+                Object.keys(data).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = data[id];
+                });
             }
         }
 
         function render() {
             const Cf = parseFloat(document.getElementById('fixedCost').value) || 0;
+            const v = parseFloat(document.getElementById('variableCost').value) || 0;
             const savings = parseFloat(document.getElementById('savings').value) || 0;
             const qSim = parseInt(document.getElementById('peopleSlider').value);
-            const v = 83; // 教会標準変動費（パン代など）
 
             const pA = parseFloat(document.getElementById('pA').value) || 0;
             const rA = (parseFloat(document.getElementById('rA').value) || 0) / 100;
             const pB = parseFloat(document.getElementById('pB').value) || 0;
             const rB = (parseFloat(document.getElementById('rB').value) || 0) / 100;
-            const pC = 500; // 学生/求職中等のデフォルト
-            const rC = Math.max(0, 1 - (rA + rB));
-
+            const pC = 500; const rC = Math.max(0, 1 - (rA + rB));
             const weightedP = (pA * rA) + (pB * rB) + (pC * rC);
+
             document.getElementById('weightedPDisplay').innerText = weightedP > 500 ? `¥${Math.round(weightedP).toLocaleString()}` : "¥---";
 
-            // サマリー計算
-            const currentAC = (Cf / qSim) + v;
+            const currentAC = qSim > 0 ? (Cf / qSim) + v : 0;
             const currentBalance = (weightedP - currentAC) * qSim;
             const gap = currentAC - weightedP;
 
-            document.getElementById('targetPriceDisplay').innerText = Cf > 0 ? `¥${Math.round(currentAC).toLocaleString()}` : "¥0";
+            document.getElementById('targetPriceDisplay').innerText = currentAC > 0 ? `¥${Math.round(currentAC).toLocaleString()}` : "¥---";
             
-            const gapDisplay = document.getElementById('gapDisplay');
-            if (Cf > 0 && weightedP > 500) {
-                gapDisplay.innerText = gap > 0 ? `¥${Math.round(gap).toLocaleString()}` : "充足";
-                gapDisplay.className = gap > 0 ? "text-2xl font-bold text-red-600 mt-1" : "text-2xl font-bold text-emerald-600 mt-1";
+            const gapEl = document.getElementById('gapDisplay');
+            if (currentAC > 0 && weightedP > 500) {
+                gapEl.innerText = gap > 0 ? `¥${Math.round(gap).toLocaleString()}` : "充足";
+                gapEl.className = gap > 0 ? "text-2xl font-bold text-red-600 mt-1" : "text-2xl font-bold text-emerald-600 mt-1";
             } else {
-                gapDisplay.innerText = "---";
-                gapDisplay.className = "text-2xl font-bold text-slate-300 mt-1";
+                gapEl.innerText = "---"; gapEl.className = "text-2xl font-bold text-slate-300 mt-1";
             }
 
-            const lifeDisplay = document.getElementById('lifeDisplay');
+            const lifeEl = document.getElementById('lifeDisplay');
             if (Cf > 0 && currentBalance < 0 && savings > 0) {
-                const months = (savings / Math.abs(currentBalance)).toFixed(1);
-                lifeDisplay.innerText = months < 120 ? months + "ヶ月" : "10年以上";
-                lifeDisplay.className = "text-2xl font-bold text-amber-600 mt-1";
+                const m = (savings / Math.abs(currentBalance)).toFixed(1);
+                lifeEl.innerText = m < 120 ? m + "ヶ月" : "10年以上";
+                lifeEl.className = "text-2xl font-bold text-amber-600 mt-1";
             } else if (Cf > 0 && currentBalance >= 0) {
-                lifeDisplay.innerText = "維持可能";
-                lifeDisplay.className = "text-2xl font-bold text-emerald-600 mt-1";
+                lifeEl.innerText = "維持可能"; lifeEl.className = "text-2xl font-bold text-emerald-600 mt-1";
             } else {
-                lifeDisplay.innerText = "---";
-                lifeDisplay.className = "text-2xl font-bold text-slate-300 mt-1";
+                lifeEl.innerText = "---"; lifeEl.className = "text-2xl font-bold text-slate-300 mt-1";
             }
 
-            // テーブル・グラフ生成（固定費が入力されている場合のみ）
             const tbody = document.getElementById('analysisTable');
-            const notice = document.getElementById('emptyTableNotice');
+            const notice = document.getElementById('emptyNotice');
             tbody.innerHTML = '';
-            
             if (Cf > 0) {
                 notice.style.display = 'none';
-                [10, 12, 15, 20, 30, 50, 80].forEach(q => {
-                    const ac = (Cf / q) + v;
-                    const bal = (weightedP - ac) * q;
+                [10, 12, 15, 20, 30, 50, 100].forEach(q => {
+                    const ac = (Cf / q) + v; const bal = (weightedP - ac) * q;
                     const tr = document.createElement('tr');
                     if (q == qSim) tr.className = "bg-slate-50 font-bold border-l-4 border-church-900";
-                    tr.innerHTML = `
-                        <td class="px-6 py-4">${q}名</td>
-                        <td class="px-6 py-4">¥${Math.round(ac).toLocaleString()}</td>
-                        <td class="px-6 py-4 text-center ${weightedP > 0 ? (bal >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-slate-300'}">
-                            ${weightedP > 0 ? '¥' + Math.round(bal).toLocaleString() : '---'}
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                            <span class="px-2 py-1 rounded-full text-[10px] ${weightedP > 0 ? (bal >= 0 ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-red-50 text-red-600') : 'bg-slate-100 text-slate-400'}">
-                                ${weightedP > 0 ? (bal >= 0 ? '充足' : '不足') : '判定中'}
-                            </span>
-                        </td>
-                    `;
+                    tr.innerHTML = `<td class="px-6 py-4">${q}名</td><td class="px-6 py-4">¥${Math.round(ac).toLocaleString()}</td><td class="px-6 py-4 text-center ${weightedP > 500 ? (bal >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-slate-300'}">${weightedP > 500 ? '¥'+Math.round(bal).toLocaleString() : '---'}</td><td class="px-6 py-4 text-right"><span class="px-2 py-1 rounded-full text-[10px] ${weightedP > 500 ? (bal >= 0 ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-red-50 text-red-600') : 'bg-slate-100 text-slate-400'}">${weightedP > 500 ? (bal >= 0 ? '充足' : '不足') : '入力待'}</span></td>`;
                     tbody.appendChild(tr);
                 });
-            } else {
-                notice.style.display = 'block';
-            }
+            } else { notice.style.display = 'block'; }
 
-            // グラフ更新
             const labels = Array.from({length: 41}, (_, i) => i + 10);
             const acData = Cf > 0 ? labels.map(l => (Cf / l) + v) : [];
             const pData = weightedP > 500 ? labels.map(() => weightedP) : [];
-
             if (chart) chart.destroy();
-            const ctx = document.getElementById('cvpChart').getContext('2d');
-            chart = new Chart(ctx, {
+            chart = new Chart(document.getElementById('cvpChart').getContext('2d'), {
                 type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: currentMode === 'ministry' ? '一人当たりの必要負担(AC)' : '必要単価(AC)', data: acData, borderColor: '#1e293b', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 },
-                        { label: currentMode === 'ministry' ? '平均献金目安' : '平均単価(P)', data: pData, borderColor: '#cbd5e1', borderWidth: 1.5, borderDash: [5, 5], pointRadius: 0, fill: false }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } } },
-                        tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', titleFont: { size: 12 }, bodyFont: { size: 11 } }
-                    },
-                    scales: { 
-                        y: { beginAtZero: false, min: 0, max: 40000, ticks: { font: { size: 9 }, callback: (v) => '¥' + v.toLocaleString() } },
-                        x: { title: { display: true, text: '人数', font: { size: 10, weight: 'bold' } }, ticks: { font: { size: 9 } } }
-                    }
-                }
+                data: { labels, datasets: [
+                    { label: currentMode === 'ministry' ? '一人当たりの必要負担(AC)' : '必要単価(AC)', data: acData, borderColor: '#1e293b', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 },
+                    { label: currentMode === 'ministry' ? '平均献金目安' : '平均単価(P)', data: pData, borderColor: '#cbd5e1', borderWidth: 1.5, borderDash: [5, 5], pointRadius: 0, fill: false }
+                ]},
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } } } }, scales: { y: { min: 0, max: 40000, ticks: { font: { size: 9 }, callback: (v) => '¥' + v.toLocaleString() } }, x: { ticks: { font: { size: 9 } } } } }
             });
         }
-
         window.onload = () => { loadData(); updateSlider(); render(); };
     </script>
 </body>
