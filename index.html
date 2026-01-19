@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教会経営シミュレーター (Microeconomics Ed.)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; }
+        .input-label { display: block; font-size: 0.875rem; font-weight: bold; color: #374151; margin-bottom: 5px; }
+        .input-field { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+        .danger-zone { background-color: #fee2e2; color: #b91c1c; font-weight: bold; }
+        .safe-zone { background-color: #d1fae5; color: #047857; font-weight: bold; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-800">⛪ 教会経営シミュレーター</h1>
+            <p class="text-gray-600">Microeconomics Analysis Tool for Small Communities</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="md:col-span-1 space-y-4">
+                
+                <div class="card">
+                    <h2 class="text-xl font-bold mb-4 border-b pb-2">📊 基礎コスト設定</h2>
+                    <div class="input-group">
+                        <label class="input-label">固定費 (Cf) / 月</label>
+                        <input type="number" id="fixedCost" class="input-field" value="320000">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">単位可変費 (v) / 人</label>
+                        <input type="number" id="variableCost" class="input-field" value="83">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">現在の預金残高 (余命計算用)</label>
+                        <input type="number" id="savings" class="input-field" value="380000">
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="text-xl font-bold mb-4 border-b pb-2">💰 献金構成 (価格差別)</h2>
+                    
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">層A (支える柱)</label>
+                            <input type="number" id="priceA" class="input-field text-sm" value="20000">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">構成比 (%)</label>
+                            <input type="number" id="ratioA" class="input-field text-sm" value="30">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">層B (通常)</label>
+                            <input type="number" id="priceB" class="input-field text-sm" value="5000">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">構成比 (%)</label>
+                            <input type="number" id="ratioB" class="input-field text-sm" value="50">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">層C (学生等)</label>
+                            <input type="number" id="priceC" class="input-field text-sm" value="500">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">構成比 (%)</label>
+                            <input type="number" id="ratioC" class="input-field text-sm" value="20">
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 p-2 bg-blue-50 rounded text-center">
+                        <span class="text-sm text-blue-800">加重平均単価(P): </span>
+                        <strong id="weightedPDisplay" class="text-lg text-blue-900">¥8,600</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="md:col-span-2 space-y-6">
+                
+                <div class="card">
+                    <canvas id="cvpChart"></canvas>
+                </div>
+
+                <div class="card overflow-x-auto">
+                    <h2 class="text-xl font-bold mb-4">📈 損益シミュレーション結果</h2>
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                            <tr>
+                                <th class="px-4 py-3">人数 (Q)</th>
+                                <th class="px-4 py-3">一人当コスト(AC)</th>
+                                <th class="px-4 py-3">月間損益</th>
+                                <th class="px-4 py-3">余命 (ヶ月)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultTableBody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="mt-12 text-center text-gray-400 text-sm">
+            <p>Built with Creative Partnership logic. Open Source ready.</p>
+        </footer>
+    </div>
+
+    <script>
+        // --- 設定値 ---
+        const maxPeople = 50;
+        let chartInstance = null;
+
+        // --- DOM要素の取得 ---
+        const inputs = document.querySelectorAll('input');
+        
+        // --- 計算ロジック ---
+        function calculate() {
+            // 入力値の取得
+            const Cf = parseFloat(document.getElementById('fixedCost').value) || 0;
+            const v = parseFloat(document.getElementById('variableCost').value) || 0;
+            const savings = parseFloat(document.getElementById('savings').value) || 0;
+
+            const pA = parseFloat(document.getElementById('priceA').value) || 0;
+            const rA = parseFloat(document.getElementById('ratioA').value) / 100 || 0;
+            const pB = parseFloat(document.getElementById('priceB').value) || 0;
+            const rB = parseFloat(document.getElementById('ratioB').value) / 100 || 0;
+            const pC = parseFloat(document.getElementById('priceC').value) || 0;
+            const rC = parseFloat(document.getElementById('ratioC').value) / 100 || 0;
+
+            // 加重平均単価の計算
+            const weightedP = (pA * rA) + (pB * rB) + (pC * rC);
+            document.getElementById('weightedPDisplay').innerText = `¥${Math.round(weightedP).toLocaleString()}`;
+
+            // データ生成
+            const labels = [];
+            const dataAC = [];
+            const dataP = [];
+            const tableData = [];
+
+            for (let q = 1; q <= maxPeople; q++) {
+                const ac = (Cf / q) + v;
+                const monthlyProfit = (weightedP - ac) * q;
+                
+                let burnRate = "---";
+                if (monthlyProfit < 0) {
+                    const months = savings / Math.abs(monthlyProfit);
+                    burnRate = months < 100 ? months.toFixed(1) + "ヶ月" : "99+ヶ月";
+                } else {
+                    burnRate = "黒字維持";
+                }
+
+                labels.push(q);
+                dataAC.push(ac);
+                dataP.push(weightedP);
+
+                tableData.push({
+                    q: q,
+                    ac: ac,
+                    profit: monthlyProfit,
+                    burnRate: burnRate
+                });
+            }
+
+            return { labels, dataAC, dataP, tableData, weightedP };
+        }
+
+        // --- 描画ロジック ---
+        function render() {
+            const { labels, dataAC, dataP, tableData, weightedP } = calculate();
+
+            // 1. チャート描画
+            const ctx = document.getElementById('cvpChart').getContext('2d');
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '平均費用 (AC) - 生存ライン',
+                            data: dataAC,
+                            borderColor: 'rgb(239, 68, 68)', // Red
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            pointRadius: 1
+                        },
+                        {
+                            label: '平均献金 (P) - 収入ライン',
+                            data: dataP,
+                            borderColor: 'rgb(59, 130, 246)', // Blue
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '損益分岐点分析 (Break-even Analysis)'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ": ¥" + Math.round(context.raw).toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 40000, // グラフの見やすさのために上限設定（必要に応じて調整）
+                            title: { display: true, text: '金額 (円)' }
+                        },
+                        x: {
+                            title: { display: true, text: '会員数 (人)' }
+                        }
+                    }
+                }
+            });
+
+            // 2. テーブル描画 (ハイライト表示付き)
+            const tbody = document.getElementById('resultTableBody');
+            tbody.innerHTML = '';
+
+            // 重要なポイント（10人〜40人）を表示、または全件表示
+            tableData.forEach(row => {
+                // 簡易化のため5人刻み + 12人(現状)付近を表示
+                if (row.q % 5 === 0 || row.q === 12 || row.q === 13) {
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b hover:bg-gray-50";
+                    
+                    // 赤字・黒字の判定クラス
+                    const profitClass = row.profit >= 0 ? "text-green-600 font-bold" : "text-red-600 font-bold";
+                    const bgClass = row.profit >= 0 ? "bg-green-50" : "bg-red-50";
+                    
+                    // バーンレートの警告色
+                    let burnClass = "";
+                    if (row.profit < 0 && parseFloat(row.burnRate) < 3) burnClass = "text-red-700 font-black animate-pulse";
+
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 font-medium text-gray-900 ${bgClass}">${row.q}人</td>
+                        <td class="px-4 py-3">¥${Math.round(row.ac).toLocaleString()}</td>
+                        <td class="px-4 py-3 ${profitClass}">¥${Math.round(row.profit).toLocaleString()}</td>
+                        <td class="px-4 py-3 ${burnClass}">${row.burnRate}</td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+        }
+
+        // --- イベントリスナー設定 ---
+        inputs.forEach(input => {
+            input.addEventListener('input', render);
+        });
+
+        // 初期描画
+        render();
+
+    </script>
+</body>
+</html>
