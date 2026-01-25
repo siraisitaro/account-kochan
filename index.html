@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KyokaiTsuku - 教会運営プロフェッショナル</title>
+    <title>KyokaiTsuku - 教会運営プロフェッショナル (Fixed)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -28,7 +28,6 @@
         .stat-bar-bg { background: #e2e8f0; height: 6px; border-radius: 3px; overflow: hidden; }
         .stat-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
         
-        /* 礼拝実行時のアニメーション用 */
         @keyframes pulse-gold {
             0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
@@ -39,7 +38,6 @@
 </head>
 <body class="text-slate-800 h-screen flex flex-col overflow-hidden">
 
-    <!-- TOP BAR -->
     <nav class="bg-church-900 text-white h-16 flex-none shadow-lg z-10">
         <div class="max-w-7xl mx-auto px-4 h-full flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -53,11 +51,11 @@
                 </div>
                 <div class="text-center">
                     <div class="text-[10px] text-slate-400 uppercase">Funds (資金)</div>
-                    <div class="font-bold text-lg text-emerald-400 leading-tight">¥<span id="uiFunds">5,000,000</span></div>
+                    <div class="font-bold text-lg text-emerald-400 leading-tight">¥<span id="uiFunds">0</span></div>
                 </div>
                 <div class="text-center">
                     <div class="text-[10px] text-slate-400 uppercase">Believers (信徒)</div>
-                    <div class="font-bold text-lg text-blue-300 leading-tight"><span id="uiMembers">15</span>名</div>
+                    <div class="font-bold text-lg text-blue-300 leading-tight"><span id="uiMembers">0</span>名</div>
                 </div>
                 <div class="text-center">
                     <div class="text-[10px] text-slate-400 uppercase">Reputation (評判)</div>
@@ -68,8 +66,6 @@
     </nav>
 
     <div class="flex flex-grow overflow-hidden max-w-7xl mx-auto w-full">
-        
-        <!-- SIDEBAR MENU -->
         <aside class="w-64 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
             <div class="p-4 space-y-2">
                 <button onclick="app.setTab('dashboard')" class="w-full text-left px-4 py-3 rounded-lg bg-slate-100 font-bold text-church-900 hover:bg-slate-200 transition flex items-center gap-3">
@@ -91,7 +87,6 @@
                     <i class="fa-solid fa-chevron-right text-xs"></i>
                 </button>
             </div>
-            
             <div class="mt-auto p-4 border-t border-slate-200">
                 <div class="bg-slate-50 p-3 rounded text-xs text-slate-500 pixel-font h-32 overflow-y-auto" id="miniLog">
                     > ゲーム開始...<br>
@@ -99,18 +94,14 @@
             </div>
         </aside>
 
-        <!-- MAIN CONTENT AREA -->
         <main class="flex-grow bg-slate-100 p-6 overflow-y-auto" id="mainArea">
-            <!-- Content injected by JS -->
-        </main>
-
+            </main>
     </div>
 
-    <!-- MODAL (Service Result) -->
     <div id="resultModal" class="fixed inset-0 bg-church-900/90 z-50 hidden items-center justify-center backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all scale-100">
             <div class="bg-church-900 text-white p-6 flex justify-between items-center">
-                <h3 class="text-xl font-bold"><i class="fa-solid fa-cross text-gold-500 mr-2"></i> 礼拝レポート (Match Result)</h3>
+                <h3 class="text-xl font-bold"><i class="fa-solid fa-cross text-gold-500 mr-2"></i> 礼拝レポート</h3>
                 <span class="text-sm font-mono text-slate-400" id="resultDate">Year 1 / Month 1</span>
             </div>
             <div class="p-8">
@@ -129,12 +120,10 @@
                         <div class="text-3xl font-black text-blue-600" id="resSatisfaction">0%</div>
                     </div>
                 </div>
-                
                 <div class="space-y-3 mb-8">
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-2">Highlights</h4>
                     <div id="resHighlights" class="text-sm space-y-2 text-slate-700 font-mono"></div>
                 </div>
-
                 <div class="flex justify-center">
                     <button onclick="app.closeResult()" class="bg-church-900 text-white px-8 py-3 rounded-full font-bold hover:bg-church-700 transition shadow-lg">
                         次の週へ進む
@@ -145,7 +134,6 @@
     </div>
 
     <script>
-        // --- GAME DATA & CONFIG ---
         const ROLES = {
             pastor: { label: '主任牧師', icon: 'fa-user-tie' },
             worship: { label: '奏楽者', icon: 'fa-music' },
@@ -172,29 +160,22 @@
             ]}
         ];
 
-        // --- GAME ENGINE ---
         const game = {
             state: {
                 year: 1, month: 1, week: 1,
                 funds: 3000000,
                 members: 10,
-                reputation: 0, // 0-1000
-                
-                // My Team
+                reputation: 0,
                 staff: [],
                 facilities: { sound: 0, building: 0 },
-
-                // History for charts
-                history: { funds: [], members: [] }
+                history: { labels: [], funds: [] } // チャート用データ
             },
 
-            // ランダムなスタッフ生成 (スカウト用)
             generateStaff() {
                 const names = ['ペテロ田中', 'ヨハネ佐藤', 'パウロ鈴木', 'マリア高橋', 'ルツ伊藤', 'ダビデ山本', 'モーセ中村'];
                 const roleKeys = Object.keys(ROLES);
                 const role = roleKeys[Math.floor(Math.random() * roleKeys.length)];
                 
-                // Rank logic (weighted)
                 const rRand = Math.random();
                 let rankIdx = 0;
                 if (rRand > 0.98) rankIdx = 4; // S
@@ -203,7 +184,7 @@
                 else if (rRand > 0.4) rankIdx = 1; // C
                 
                 const rank = RANKS[rankIdx];
-                const baseStat = (rankIdx + 1) * 15 + Math.floor(Math.random() * 10); // 15~85
+                const baseStat = (rankIdx + 1) * 15 + Math.floor(Math.random() * 10);
                 const salary = (rankIdx + 1) * 50000 + Math.floor(Math.random() * 10000);
 
                 return {
@@ -212,28 +193,23 @@
                     role: role,
                     rank: rank,
                     stats: {
-                        preach: role === 'pastor' ? baseStat + 10 : baseStat - 20,
+                        // Math.max(0, ...) でマイナス値を防止
+                        preach: Math.max(0, role === 'pastor' ? baseStat + 10 : baseStat - 20),
                         care: baseStat,
                         admin: baseStat
                     },
                     salary: salary,
-                    cost: salary * 3 // 契約金
+                    cost: salary * 3
                 };
             },
 
             calculatePower() {
-                // チーム総合力計算
-                let preachPower = 0;
-                let worshipPower = 0;
-                let carePower = 0;
-
+                let preachPower = 0, worshipPower = 0, carePower = 0;
                 this.state.staff.forEach(s => {
                     preachPower += s.stats.preach || 0;
-                    if(s.role === 'worship') worshipPower += s.stats.care; // 奏楽はケア値依存(仮)
+                    if(s.role === 'worship') worshipPower += s.stats.care;
                     carePower += s.stats.care;
                 });
-
-                // 施設補正
                 const soundEff = FACILITIES[0].levels[this.state.facilities.sound].effect;
                 
                 return {
@@ -242,27 +218,52 @@
                     care: Math.max(10, carePower),
                     capacity: FACILITIES[1].levels[this.state.facilities.building].cap
                 };
+            },
+
+            recordHistory() {
+                const s = this.state;
+                // チャート用の履歴記録
+                if (s.week % 4 === 1) { // 月初に記録
+                    s.history.labels.push(`${s.year}/${s.month}`);
+                    s.history.funds.push(s.funds);
+                    if(s.history.labels.length > 10) { // 直近10ヶ月のみ
+                        s.history.labels.shift();
+                        s.history.funds.shift();
+                    }
+                }
             }
         };
 
-        // --- UI CONTROLLER ---
         const app = {
             currentTab: 'dashboard',
             candidates: [],
+            chartInstance: null,
 
             init() {
-                // Initial Staff
                 game.state.staff.push({
                     id: 1, name: 'あなた (牧師)', role: 'pastor', rank: 'C',
                     stats: { preach: 40, care: 40, admin: 30 }, salary: 150000, cost: 0
                 });
-                this.refreshCandidates();
+                game.recordHistory(); // 初期データ
+                
+                // 初回のみ無料で候補生成
+                this.candidates = Array.from({length: 4}, () => game.generateStaff());
+                
                 this.updateHeader();
                 this.render();
             },
 
             refreshCandidates() {
+                const COST = 10000;
+                if (game.state.funds < COST) {
+                    alert('資金が不足しています (要 ¥10,000)');
+                    return;
+                }
+                game.state.funds -= COST;
                 this.candidates = Array.from({length: 4}, () => game.generateStaff());
+                this.log('候補者リストを更新しました (¥-10,000)');
+                this.updateHeader();
+                this.render(); // ★ここが重要：再描画
             },
 
             updateHeader() {
@@ -271,7 +272,6 @@
                 document.getElementById('uiMonth').innerText = s.month;
                 document.getElementById('uiFunds').innerText = s.funds.toLocaleString();
                 document.getElementById('uiMembers').innerText = s.members;
-                
                 const repLvl = Math.floor(s.reputation / 100) + 1;
                 document.getElementById('uiReputation').innerText = `Lv.${repLvl}`;
             },
@@ -284,13 +284,11 @@
             render() {
                 const main = document.getElementById('mainArea');
                 main.innerHTML = '';
-
                 if (this.currentTab === 'dashboard') this.renderDashboard(main);
                 else if (this.currentTab === 'personnel') this.renderPersonnel(main);
                 else if (this.currentTab === 'facility') this.renderFacility(main);
             },
 
-            // --- DASHBOARD RENDER ---
             renderDashboard(container) {
                 const power = game.calculatePower();
                 const s = game.state;
@@ -298,28 +296,34 @@
 
                 container.innerHTML = `
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- Left: Status -->
                         <div class="lg:col-span-2 space-y-6">
                             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                <h2 class="font-bold text-church-900 mb-4"><i class="fa-solid fa-chart-pie mr-2"></i>教会パラメーター (Team Stats)</h2>
+                                <h2 class="font-bold text-church-900 mb-4"><i class="fa-solid fa-chart-pie mr-2"></i>教会パラメーター</h2>
                                 <div class="space-y-4">
                                     <div>
-                                        <div class="flex justify-between text-xs font-bold mb-1"><span>説教力 (Preaching)</span> <span>${power.preach}</span></div>
+                                        <div class="flex justify-between text-xs font-bold mb-1"><span>説教力</span> <span>${power.preach}</span></div>
                                         <div class="stat-bar-bg"><div class="stat-bar-fill bg-rose-500" style="width: ${Math.min(100, power.preach)}%"></div></div>
                                     </div>
                                     <div>
-                                        <div class="flex justify-between text-xs font-bold mb-1"><span>礼拝の雰囲気 (Worship)</span> <span>${power.worship}</span></div>
+                                        <div class="flex justify-between text-xs font-bold mb-1"><span>礼拝の雰囲気</span> <span>${power.worship}</span></div>
                                         <div class="stat-bar-bg"><div class="stat-bar-fill bg-amber-400" style="width: ${Math.min(100, power.worship)}%"></div></div>
                                     </div>
                                     <div>
-                                        <div class="flex justify-between text-xs font-bold mb-1"><span>牧会ケア (Care)</span> <span>${power.care}</span></div>
+                                        <div class="flex justify-between text-xs font-bold mb-1"><span>牧会ケア</span> <span>${power.care}</span></div>
                                         <div class="stat-bar-bg"><div class="stat-bar-fill bg-emerald-500" style="width: ${Math.min(100, power.care)}%"></div></div>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                <h2 class="font-bold text-church-900 mb-4"><i class="fa-solid fa-users mr-2"></i>現在のスタッフ (Roster)</h2>
+                                <h2 class="font-bold text-church-900 mb-2"><i class="fa-solid fa-money-bill-trend-up mr-2"></i>資金推移 (Funds History)</h2>
+                                <div class="h-48">
+                                    <canvas id="fundChart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                <h2 class="font-bold text-church-900 mb-4"><i class="fa-solid fa-users mr-2"></i>現在のスタッフ</h2>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     ${s.staff.map(st => `
                                         <div class="border border-slate-100 p-3 rounded-lg flex items-center justify-between">
@@ -339,7 +343,6 @@
                             </div>
                         </div>
 
-                        <!-- Right: Info -->
                         <div class="space-y-6">
                             <div class="bg-church-900 text-white p-6 rounded-xl shadow-lg">
                                 <h3 class="font-bold text-gold-500 mb-2">Next Service Info</h3>
@@ -365,3 +368,234 @@
                                 <div class="w-full bg-slate-100 rounded-full h-2 mt-2">
                                     <div class="bg-blue-500 h-2 rounded-full" style="width: ${Math.min(100, (s.members/30)*100)}%"></div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                this.renderChart();
+            },
+
+            renderChart() {
+                const ctx = document.getElementById('fundChart');
+                if(!ctx) return;
+                
+                if(this.chartInstance) this.chartInstance.destroy();
+                
+                this.chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: game.state.history.labels,
+                        datasets: [{
+                            label: '資金',
+                            data: game.state.history.funds,
+                            borderColor: '#10b981',
+                            tension: 0.1,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: false } }
+                    }
+                });
+            },
+
+            renderPersonnel(container) {
+                container.innerHTML = `
+                    <h2 class="text-2xl font-bold text-church-900 mb-6">スカウト・人事</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        ${this.candidates.map((c, idx) => `
+                            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 staff-card relative overflow-hidden">
+                                <div class="absolute top-0 right-0 p-2 bg-slate-100 text-xs font-bold rounded-bl-lg">契約金: ¥${c.cost.toLocaleString()}</div>
+                                <div class="flex items-center gap-4 mb-4">
+                                    <div class="w-12 h-12 rounded-full bg-church-50 flex items-center justify-center text-church-600 text-xl border border-slate-200">
+                                        <i class="fa-solid ${ROLES[c.role].icon}"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-slate-400">${ROLES[c.role].label}</div>
+                                        <div class="text-lg font-bold flex items-center gap-2">
+                                            ${c.name}
+                                            <span class="text-sm font-black italic ${RANK_COLORS[c.rank]}">Rank ${c.rank}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-2 mb-4">
+                                    <div class="flex justify-between text-xs"><span>説教力</span> <span class="font-bold">${c.stats.preach}</span></div>
+                                    <div class="stat-bar-bg"><div class="stat-bar-fill bg-rose-500" style="width: ${c.stats.preach}%"></div></div>
+                                    <div class="flex justify-between text-xs"><span>牧会力</span> <span class="font-bold">${c.stats.care}</span></div>
+                                    <div class="stat-bar-bg"><div class="stat-bar-fill bg-emerald-500" style="width: ${c.stats.care}%"></div></div>
+                                </div>
+                                <div class="flex justify-between items-center mt-4">
+                                    <div class="text-xs text-slate-500">月額謝礼: ¥${c.salary.toLocaleString()}</div>
+                                    <button onclick="app.hireStaff(${idx})" class="bg-church-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-gold-500 hover:text-church-900 transition">
+                                        招聘する
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="mt-6 text-center">
+                        <button onclick="app.refreshCandidates()" class="text-church-900 font-bold text-sm hover:text-gold-500 bg-white border border-slate-300 px-6 py-2 rounded-full shadow-sm">
+                            <i class="fa-solid fa-rotate mr-2"></i>候補者リストを更新 (¥10,000)
+                        </button>
+                    </div>
+                `;
+            },
+
+            hireStaff(idx) {
+                const target = this.candidates[idx];
+                if (game.state.funds < target.cost) {
+                    alert('資金が不足しています！');
+                    return;
+                }
+                if (confirm(`${target.name}を招聘しますか？\n契約金: ¥${target.cost.toLocaleString()}`)) {
+                    game.state.funds -= target.cost;
+                    game.state.staff.push(target);
+                    this.candidates.splice(idx, 1);
+                    this.log(`${target.name} (Rank ${target.rank}) がチームに加わりました！`);
+                    this.updateHeader();
+                    this.render();
+                }
+            },
+
+            renderFacility(container) {
+                const s = game.state;
+                const renderUpgrade = (type, currentLvl, data) => {
+                    const nextLvl = currentLvl + 1;
+                    const max = data.levels.length - 1;
+                    let btnHtml = '';
+                    if (currentLvl >= max) {
+                        btnHtml = `<button disabled class="w-full bg-slate-200 text-slate-400 py-2 rounded font-bold cursor-not-allowed">最大レベル</button>`;
+                    } else {
+                        const next = data.levels[nextLvl];
+                        btnHtml = `
+                            <button onclick="app.upgradeFacility('${type}')" class="w-full bg-church-900 text-white py-2 rounded font-bold hover:bg-gold-500 hover:text-church-900 transition">
+                                アップグレード (¥${next.cost.toLocaleString()})
+                            </button>
+                            <div class="text-center text-xs text-slate-400 mt-2">
+                                効果: ${type === 'building' ? '定員 ' + next.cap + '名' : '礼拝効果 +' + next.effect}
+                            </div>
+                        `;
+                    }
+                    return `
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h3 class="font-bold text-lg mb-1">${data.name}</h3>
+                            <div class="text-gold-500 font-bold mb-4 text-sm">現在: ${data.levels[currentLvl].name} (Lv.${currentLvl+1})</div>
+                            <div class="bg-slate-50 p-4 rounded-lg mb-4 h-32 flex items-center justify-center text-slate-300">
+                                <i class="fa-solid ${type === 'sound' ? 'fa-microphone-lines' : 'fa-building'} text-6xl"></i>
+                            </div>
+                            ${btnHtml}
+                        </div>
+                    `;
+                };
+
+                container.innerHTML = `
+                    <h2 class="text-2xl font-bold text-church-900 mb-6">施設管理</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        ${renderUpgrade('sound', s.facilities.sound, FACILITIES[0])}
+                        ${renderUpgrade('building', s.facilities.building, FACILITIES[1])}
+                    </div>
+                `;
+            },
+
+            upgradeFacility(type) {
+                const s = game.state;
+                const data = type === 'sound' ? FACILITIES[0] : FACILITIES[1];
+                const nextLvl = s.facilities[type] + 1;
+                
+                // Max Check
+                if(nextLvl >= data.levels.length) return;
+
+                const cost = data.levels[nextLvl].cost;
+                if (s.funds < cost) {
+                    alert('資金が足りません。献金を募りましょう。');
+                    return;
+                }
+                if (confirm(`¥${cost.toLocaleString()} で ${data.levels[nextLvl].name} に改修しますか？`)) {
+                    s.funds -= cost;
+                    s.facilities[type] = nextLvl;
+                    this.log(`${data.name}をレベルアップしました！`);
+                    this.updateHeader();
+                    this.render();
+                }
+            },
+
+            startWorship() {
+                const s = game.state;
+                const power = game.calculatePower();
+                const capacity = power.capacity;
+                const btn = document.getElementById('worshipBtn');
+
+                btn.classList.add('worship-active');
+                
+                let attendance = Math.floor(s.members * 0.9 + (s.reputation * 0.1) + (Math.random() * s.members * 0.2));
+                attendance = Math.min(attendance, capacity);
+                
+                let newSeekers = 0;
+                if (Math.random() < (power.preach / 200)) {
+                    newSeekers = Math.floor(1 + Math.random() * 3);
+                }
+                
+                const satisfaction = Math.min(100, Math.floor((power.preach + power.worship) / 2 + (Math.random() * 20)));
+                const avgOffering = 2000 + (satisfaction * 20);
+                const totalOffering = (attendance + newSeekers) * avgOffering;
+
+                const highlights = [];
+                if (attendance >= capacity) highlights.push(`<i class="fa-solid fa-triangle-exclamation text-amber-500"></i> 会堂が満員です！増築が必要です。`);
+                if (satisfaction > 80) highlights.push(`<i class="fa-solid fa-face-smile text-emerald-500"></i> 会衆は深い感動に包まれました。`);
+                if (power.worship < 20) highlights.push(`<i class="fa-solid fa-volume-xmark text-slate-400"></i> 音響トラブルで説教が聞き取りづらかった...`);
+                if (newSeekers > 0) highlights.push(`<i class="fa-solid fa-user-plus text-blue-500"></i> ${newSeekers}名の新しい魂が導かれました！`);
+                else highlights.push(`特に大きな変化のない静かな主日でした。`);
+
+                s.funds += totalOffering;
+                const monthlyCost = s.staff.reduce((acc, st) => acc + st.salary, 0) + FACILITIES[1].levels[s.facilities.building].upkeep;
+                
+                if (s.week % 4 === 0) {
+                    s.funds -= monthlyCost;
+                    highlights.push(`<i class="fa-solid fa-money-bill-wave text-red-400"></i> 月末経費 ¥${monthlyCost.toLocaleString()} を支払いました。`);
+                    s.month++;
+                    if (s.month > 12) { s.month = 1; s.year++; }
+                    // 履歴記録 (月初に更新されるため次の週の頭用だが、簡易的にここでコール)
+                    game.recordHistory();
+                }
+                s.week++;
+
+                if (satisfaction > 60) s.members += newSeekers;
+                else if (satisfaction < 30) s.members = Math.max(0, s.members - 1);
+                
+                s.reputation += (satisfaction > 70 ? 2 : 0);
+
+                setTimeout(() => {
+                    btn.classList.remove('worship-active');
+                    this.showResult(attendance + newSeekers, newSeekers, totalOffering, satisfaction, highlights);
+                    this.updateHeader();
+                }, 1500);
+            },
+
+            showResult(att, isNew, off, sat, highlights) {
+                document.getElementById('resAttendance').innerText = att;
+                document.getElementById('resNewMembers').innerText = `+${isNew} 新規`;
+                document.getElementById('resOffering').innerText = `¥${off.toLocaleString()}`;
+                document.getElementById('resSatisfaction').innerText = `${sat}%`;
+                document.getElementById('resHighlights').innerHTML = highlights.map(h => `<div>${h}</div>`).join('');
+                document.getElementById('resultDate').innerText = `Year ${game.state.year} / Month ${game.state.month}`;
+                document.getElementById('resultModal').classList.replace('hidden', 'flex');
+            },
+
+            closeResult() {
+                document.getElementById('resultModal').classList.replace('flex', 'hidden');
+                this.render();
+            },
+
+            log(msg) {
+                const area = document.getElementById('miniLog');
+                if(area) area.innerHTML = `> ${msg}<br>` + area.innerHTML;
+            }
+        };
+
+        window.onload = () => app.init();
+    </script>
+</body>
+</html>
