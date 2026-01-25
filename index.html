@@ -21,7 +21,7 @@
         }
     </script>
     <style>
-        body { background-color: #f1f5f9; -webkit-tap-highlight-color: transparent; user-select: none; }
+        body { background-color: #f1f5f9; -webkit-tap-highlight-color: transparent; user-select: none; font-family: sans-serif; }
         .stat-bar-bg { background: #e2e8f0; height: 6px; border-radius: 3px; overflow: hidden; }
         .stat-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
         .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
@@ -37,9 +37,12 @@
             100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
         }
         .worship-active { animation: pulse-gold 1.5s infinite; border-color: #eab308; background-color: #eab308; }
+
+        /* エラー時の表示エリア */
+        #error-overlay { display: none; }
     </style>
 </head>
-<body class="text-slate-800 h-screen flex flex-col overflow-hidden font-sans">
+<body class="text-slate-800 h-screen flex flex-col overflow-hidden">
 
     <!-- HEADER -->
     <nav class="bg-church-900 text-white shrink-0 shadow-lg z-20 relative">
@@ -50,7 +53,7 @@
                     <span class="font-bold text-sm">教会をつくろう！DX</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <button onclick="app.toggleMenu()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-gear"></i></button>
+                    <button onclick="app.toggleMenu()" class="text-slate-400 hover:text-white px-2"><i class="fa-solid fa-gear"></i></button>
                     <div class="text-xs font-mono text-slate-400 border-l border-slate-600 pl-3">
                         <span id="uiYear">1</span>年 <span id="uiMonth">1</span>月
                     </div>
@@ -59,15 +62,15 @@
             <div class="grid grid-cols-3 gap-2 text-[10px] text-center">
                 <div class="bg-church-800 rounded p-1">
                     <div class="text-slate-400 uppercase scale-90">Funds</div>
-                    <div class="font-bold text-emerald-400 text-xs sm:text-sm">¥<span id="uiFunds">0</span></div>
+                    <div class="font-bold text-emerald-400 text-xs sm:text-sm">¥<span id="uiFunds">---</span></div>
                 </div>
                 <div class="bg-church-800 rounded p-1">
                     <div class="text-slate-400 uppercase scale-90">Believers</div>
-                    <div class="font-bold text-blue-300 text-xs sm:text-sm"><span id="uiMembers">0</span>名</div>
+                    <div class="font-bold text-blue-300 text-xs sm:text-sm"><span id="uiMembers">---</span>名</div>
                 </div>
                 <div class="bg-church-800 rounded p-1">
                     <div class="text-slate-400 uppercase scale-90">Reputation</div>
-                    <div class="font-bold text-gold-500 text-xs sm:text-sm"><span id="uiReputation">Lv.1</span></div>
+                    <div class="font-bold text-gold-500 text-xs sm:text-sm"><span id="uiReputation">---</span></div>
                 </div>
             </div>
         </div>
@@ -95,7 +98,7 @@
                     <i class="fa-solid fa-church w-5 text-center"></i> 施設・建築
                 </button>
                 <button onclick="app.setTab('finance')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-100 flex items-center gap-3 font-bold text-slate-600 transition nav-btn" data-target="finance">
-                    <i class="fa-solid fa-building-columns w-5 text-center"></i> 財務・方針 <span class="text-[10px] bg-red-100 text-red-600 px-1 rounded ml-auto">NEW</span>
+                    <i class="fa-solid fa-building-columns w-5 text-center"></i> 財務・方針
                 </button>
             </div>
             
@@ -109,8 +112,19 @@
 
         <!-- MAIN SCROLL AREA -->
         <main class="flex-grow bg-slate-100 p-4 pb-24 md:pb-6 overflow-y-auto relative" id="mainArea">
-            <!-- Content Injected Here -->
+            <div class="text-center mt-10 text-slate-400">
+                <i class="fa-solid fa-spinner fa-spin text-2xl"></i><br>Loading...
+            </div>
         </main>
+
+        <!-- EMERGENCY ERROR SCREEN -->
+        <div id="error-overlay" class="absolute inset-0 bg-church-900/95 z-[100] flex flex-col items-center justify-center text-white p-6 text-center">
+            <i class="fa-solid fa-triangle-exclamation text-4xl text-red-500 mb-4"></i>
+            <h2 class="text-xl font-bold mb-2">エラーが発生しました</h2>
+            <p class="text-sm text-slate-300 mb-6">保存データが破損している可能性があります。<br>リセットして復旧しますか？</p>
+            <button onclick="game.reset()" class="bg-red-500 text-white px-6 py-3 rounded-full font-bold shadow-lg">データを削除して復旧</button>
+            <div id="error-detail" class="mt-8 text-[10px] text-slate-500 font-mono text-left w-full bg-black/30 p-2 rounded break-all"></div>
+        </div>
 
         <!-- MOBILE WORSHIP BUTTON -->
         <div class="fixed bottom-24 right-5 md:hidden z-30">
@@ -171,7 +185,17 @@
     </div>
 
     <script>
+        // --- GLOBAL ERROR HANDLER ---
+        window.onerror = function(msg, url, line, col, error) {
+            document.getElementById('error-overlay').style.display = 'flex';
+            document.getElementById('error-detail').innerText = `Error: ${msg}\nLine: ${line}`;
+            return false;
+        };
+
         // --- CONFIG & CONSTANTS ---
+        // Save Key Changed to v3 to force reset for clean start
+        const SAVE_KEY = 'kt_mobile_save_v3'; 
+
         const ROLES = {
             pastor: { label: '牧師', icon: 'fa-user-tie' },
             worship: { label: '奏楽', icon: 'fa-music' },
@@ -205,46 +229,58 @@
         // --- GAME ENGINE ---
         const game = {
             state: {
-                // Base
                 year: 1, month: 1, week: 1,
                 funds: 3000000,
                 members: 10,
                 reputation: 0,
-                // Assets
                 staff: [],
                 facilities: { sound: 0, building: 0 },
-                // Advanced
-                loans: [], // { amount: 1000000, rate: 0.01, term: 12 }
+                loans: [], 
                 policy: 'balanced',
                 history: { funds: [] }
             },
 
             save(manual = false) {
-                localStorage.setItem('kt_mobile_save_v2', JSON.stringify(this.state));
-                if(manual) app.toast('データが保存されました', 'success');
+                try {
+                    localStorage.setItem(SAVE_KEY, JSON.stringify(this.state));
+                    if(manual) app.toast('データが保存されました', 'success');
+                } catch(e) {
+                    console.error("Save failed", e);
+                    app.toast('保存に失敗しました', 'error');
+                }
             },
 
             load() {
-                const data = localStorage.getItem('kt_mobile_save_v2');
-                if (data) {
-                    this.state = JSON.parse(data);
-                    // 互換性チェック（古いデータに新プロパティがない場合の補完）
-                    if(!this.state.loans) this.state.loans = [];
-                    if(!this.state.policy) this.state.policy = 'balanced';
-                    return true;
+                try {
+                    const data = localStorage.getItem(SAVE_KEY);
+                    if (data) {
+                        const parsed = JSON.parse(data);
+                        // Validation simple check
+                        if (!parsed.staff || !Array.isArray(parsed.staff)) throw new Error("Invalid Data");
+                        
+                        this.state = parsed;
+                        // Migration
+                        if(!this.state.loans) this.state.loans = [];
+                        if(!this.state.policy) this.state.policy = 'balanced';
+                        return true;
+                    }
+                } catch(e) {
+                    console.error("Load failed", e);
+                    // If load fails, we return false to start fresh
+                    return false;
                 }
                 return false;
             },
 
             reset() {
-                localStorage.removeItem('kt_mobile_save_v2');
+                localStorage.removeItem(SAVE_KEY);
                 location.reload();
             },
 
             // Logic
             generateStaff() {
-                const names = ['ペテロ', 'ヨハネ', 'パウロ', 'マリア', 'ルツ', 'ダビデ', 'サラ', 'ノア', 'エステル'];
-                const lasts = ['田中', '佐藤', '鈴木', '高橋', '伊藤', '山本'];
+                const names = ['ペテロ', 'ヨハネ', 'パウロ', 'マリア', 'ルツ', 'ダビデ', 'サラ', 'ノア', 'エステル', 'ヤコブ'];
+                const lasts = ['田中', '佐藤', '鈴木', '高橋', '伊藤', '山本', '渡辺', '小林'];
                 const roleKeys = Object.keys(ROLES);
                 const role = roleKeys[Math.floor(Math.random() * roleKeys.length)];
                 
@@ -266,14 +302,16 @@
 
             calculatePower() {
                 let p = { preach: 0, worship: 0, care: 0, admin: 0 };
-                this.state.staff.forEach(s => {
-                    p.preach += s.stats.preach;
-                    p.worship += s.role === 'worship' ? s.stats.care * 1.5 : 0;
-                    p.care += s.stats.care;
-                    p.admin += s.stats.admin;
-                });
+                if (this.state.staff) {
+                    this.state.staff.forEach(s => {
+                        p.preach += s.stats.preach || 0;
+                        p.worship += s.role === 'worship' ? (s.stats.care || 0) * 1.5 : 0;
+                        p.care += s.stats.care || 0;
+                        p.admin += s.stats.admin || 0;
+                    });
+                }
                 const soundEff = FACILITIES.sound.levels[this.state.facilities.sound].effect;
-                const pol = POLICIES[this.state.policy];
+                const pol = POLICIES[this.state.policy] || POLICIES.balanced;
 
                 return {
                     preach: Math.max(10, p.preach),
@@ -287,11 +325,11 @@
 
             processLoans() {
                 let totalPayment = 0;
-                // シンプルな金利のみ払いシステム（元本はいつでも返済可能とする簡略化）
-                // 実際は: 月利1%とする
-                this.state.loans.forEach(l => {
-                    totalPayment += Math.floor(l.amount * 0.01);
-                });
+                if(this.state.loans) {
+                    this.state.loans.forEach(l => {
+                        totalPayment += Math.floor(l.amount * 0.01);
+                    });
+                }
                 return totalPayment;
             }
         };
@@ -302,20 +340,34 @@
             candidates: [],
 
             init() {
-                if (!game.load()) {
-                    // New Game Setup
-                    game.state.staff.push({
-                        id: 1, name: 'あなた', role: 'pastor', rank: 'C',
-                        stats: { preach: 40, care: 40, admin: 30 }, salary: 150000, cost: 0
-                    });
+                try {
+                    const loaded = game.load();
+                    if (!loaded) {
+                        // New Game Setup
+                        game.state.staff = []; // Ensure empty
+                        game.state.staff.push({
+                            id: 1, name: 'あなた', role: 'pastor', rank: 'C',
+                            stats: { preach: 40, care: 40, admin: 30 }, salary: 150000, cost: 0
+                        });
+                        game.state.funds = 3000000;
+                        game.state.members = 10;
+                    }
+                    this.candidates = Array.from({length: 3}, () => game.generateStaff());
+                    this.updateUI();
+                    this.render();
+                } catch(e) {
+                    console.error("Init failed", e);
+                    // Force Error Screen
+                    document.getElementById('error-overlay').style.display = 'flex';
+                    document.getElementById('error-detail').innerText = `Init Error: ${e.message}`;
                 }
-                this.candidates = Array.from({length: 3}, () => game.generateStaff());
-                this.updateUI();
-                this.render();
             },
 
             updateUI() {
                 const s = game.state;
+                // Safety check
+                if (!s) return;
+
                 document.getElementById('uiYear').innerText = s.year;
                 document.getElementById('uiMonth').innerText = s.month;
                 document.getElementById('uiFunds').innerText = s.funds.toLocaleString();
@@ -324,58 +376,4 @@
                 document.getElementById('uiReputation').innerText = `Lv.${repLvl}`;
                 
                 // Highlight active tab
-                document.querySelectorAll('.nav-btn, .nav-icon').forEach(el => {
-                    if(el.dataset.target === this.currentTab) {
-                        el.classList.add('text-church-900', 'bg-slate-100');
-                        el.classList.remove('text-slate-400');
-                    } else {
-                        el.classList.remove('text-church-900', 'bg-slate-100');
-                        el.classList.add('text-slate-400');
-                    }
-                });
-            },
-
-            toggleMenu() {
-                document.getElementById('menuDropdown').classList.toggle('hidden');
-            },
-
-            setTab(tab) {
-                this.currentTab = tab;
-                this.render();
-                this.updateUI();
-                window.scrollTo(0,0);
-            },
-
-            render() {
-                const main = document.getElementById('mainArea');
-                main.innerHTML = '';
-                
-                switch(this.currentTab) {
-                    case 'dashboard': this.renderDashboard(main); break;
-                    case 'personnel': this.renderPersonnel(main); break;
-                    case 'facility': this.renderFacility(main); break;
-                    case 'finance': this.renderFinance(main); break;
-                }
-            },
-
-            // --- RENDERERS ---
-            renderDashboard(container) {
-                const power = game.calculatePower();
-                const s = game.state;
-                const staffCost = s.staff.reduce((acc, st) => acc + st.salary, 0);
-                const buildingCost = FACILITIES.building.levels[s.facilities.building].upkeep;
-                const loanCost = game.processLoans();
-                const totalFixedCost = staffCost + buildingCost + loanCost;
-
-                const polName = POLICIES[s.policy].name;
-
-                container.innerHTML = `
-                    <div class="space-y-4">
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                            <h2 class="text-sm font-bold text-slate-500 uppercase mb-3">Church Stats</h2>
-                            <div class="space-y-3">
-                                <div>
-                                    <div class="flex justify-between text-xs font-bold mb-1"><span>説教力</span> <span>${power.preach}</span></div>
-                                    <div class="stat-bar-bg"><div class="stat-bar-fill bg-rose-500" style="width: ${Math.min(100, power.preach)}%"></div></div>
-                                </div>
-                                <
+                document.querySelectorAll
