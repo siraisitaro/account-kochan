@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>KyokaiTsuku Mobile DX</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -21,23 +21,35 @@
         }
     </script>
     <style>
-        body { background-color: #f1f5f9; -webkit-tap-highlight-color: transparent; user-select: none; font-family: sans-serif; }
+        /* dvh: Dynamic Viewport Height でアドレスバー問題を解決 */
+        body { 
+            background-color: #f1f5f9; 
+            -webkit-tap-highlight-color: transparent; 
+            user-select: none; 
+            font-family: sans-serif; 
+            height: 100dvh; /* 最新の高さ指定 */
+        }
         .stat-bar-bg { background: #e2e8f0; height: 6px; border-radius: 3px; overflow: hidden; }
         .stat-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
-        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        .worship-active { animation: pulse-gold 1.5s infinite; border-color: #eab308; background-color: #eab308; }
+        
+        /* ボトムナビが隠れないためのセーフエリア対応 */
+        .safe-area-bottom { 
+            padding-bottom: env(safe-area-inset-bottom, 16px); 
+        }
+
         @keyframes pulse-gold {
             0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); }
             70% { box-shadow: 0 0 0 15px rgba(234, 179, 8, 0); }
             100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
         }
+        .worship-active { animation: pulse-gold 1.5s infinite; border-color: #eab308; background-color: #eab308; }
         @keyframes fade-in-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .toast { animation: fade-in-up 0.3s ease-out forwards; }
     </style>
 </head>
-<body class="text-slate-800 h-screen flex flex-col overflow-hidden">
+<body class="text-slate-800 flex flex-col overflow-hidden">
 
-    <nav class="bg-church-900 text-white shrink-0 shadow-lg z-20 relative">
+    <nav class="bg-church-900 text-white shrink-0 shadow-lg z-20 relative pt-[env(safe-area-inset-top,0px)]">
         <div class="px-4 py-2">
             <div class="flex justify-between items-center mb-2">
                 <div class="flex items-center space-x-2">
@@ -45,7 +57,7 @@
                     <span class="font-bold text-sm">教会をつくろう！DX</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <button onclick="app.toggleMenu()" class="text-slate-400 hover:text-white px-2"><i class="fa-solid fa-gear"></i></button>
+                    <button onclick="app.toggleMenu()" class="text-slate-400 hover:text-white px-2 py-1"><i class="fa-solid fa-gear"></i></button>
                     <div class="text-xs font-mono text-slate-400 border-l border-slate-600 pl-3">
                         <span id="uiYear">1</span>年 <span id="uiMonth">1</span>月
                     </div>
@@ -54,20 +66,20 @@
             <div class="grid grid-cols-3 gap-2 text-[10px] text-center">
                 <div class="bg-church-800 rounded p-1">
                     <div class="text-slate-400 uppercase scale-90">Funds</div>
-                    <div class="font-bold text-emerald-400 text-xs sm:text-sm">¥<span id="uiFunds">0</span></div>
+                    <div class="font-bold text-emerald-400 text-xs">¥<span id="uiFunds">0</span></div>
                 </div>
                 <div class="bg-church-800 rounded p-1">
                     <div class="text-slate-400 uppercase scale-90">Believers</div>
-                    <div class="font-bold text-blue-300 text-xs sm:text-sm"><span id="uiMembers">0</span>名</div>
+                    <div class="font-bold text-blue-300 text-xs"><span id="uiMembers">0</span>名</div>
                 </div>
                 <div class="bg-church-800 rounded p-1">
                     <div class="text-slate-400 uppercase scale-90">Reputation</div>
-                    <div class="font-bold text-gold-500 text-xs sm:text-sm"><span id="uiReputation">Lv.1</span></div>
+                    <div class="font-bold text-gold-500 text-xs"><span id="uiReputation">Lv.1</span></div>
                 </div>
             </div>
         </div>
         
-        <div id="menuDropdown" class="hidden absolute top-14 right-2 bg-white text-slate-800 shadow-xl rounded-xl p-2 w-48 border border-slate-200 z-50">
+        <div id="menuDropdown" class="hidden absolute top-full right-2 bg-white text-slate-800 shadow-xl rounded-xl p-2 w-48 border border-slate-200 z-50">
             <button onclick="game.save(true)" class="w-full text-left px-4 py-3 text-sm hover:bg-slate-100 rounded flex items-center gap-2"><i class="fa-solid fa-floppy-disk"></i> 手動セーブ</button>
             <button onclick="app.resetGame()" class="w-full text-left px-4 py-3 text-sm hover:bg-red-50 text-red-600 rounded flex items-center gap-2"><i class="fa-solid fa-trash"></i> データ初期化</button>
         </div>
@@ -76,346 +88,176 @@
     <div class="flex flex-grow overflow-hidden relative">
         <aside class="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col shrink-0">
             <div class="p-4 space-y-2">
-                <button onclick="app.setTab('dashboard')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-100 flex items-center gap-3 font-bold text-slate-600 transition nav-btn" data-target="dashboard"><i class="fa-solid fa-chart-line w-5 text-center"></i> ダッシュボード</button>
-                <button onclick="app.setTab('personnel')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-100 flex items-center gap-3 font-bold text-slate-600 transition nav-btn" data-target="personnel"><i class="fa-solid fa-user-tie w-5 text-center"></i> 人事・スカウト</button>
-                <button onclick="app.setTab('facility')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-100 flex items-center gap-3 font-bold text-slate-600 transition nav-btn" data-target="facility"><i class="fa-solid fa-church w-5 text-center"></i> 施設・建築</button>
-                <button onclick="app.setTab('finance')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-100 flex items-center gap-3 font-bold text-slate-600 transition nav-btn" data-target="finance"><i class="fa-solid fa-building-columns w-5 text-center"></i> 財務・方針</button>
-            </div>
-            <div class="mt-auto p-4">
-                <button onclick="app.startWorship()" class="w-full py-4 rounded-xl bg-church-900 text-white hover:bg-church-800 transition flex items-center justify-center gap-2 shadow-lg group">
-                    <i class="fa-solid fa-fire text-gold-500 group-hover:animate-bounce"></i> <span class="font-bold">日曜礼拝を開催</span>
-                </button>
+                <button onclick="app.setTab('dashboard')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-100 flex items-center gap-3 font-bold text-slate-600 transition nav-btn" data-target="dashboard"><i class="fa-solid fa-chart-line"></i> ダッシュボード</button>
+                <button onclick="app.setTab('personnel')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-100 flex items-center gap-3 font-bold text-slate-600 transition nav-btn" data-target="personnel"><i class="fa-solid fa-user-tie"></i> 人事</button>
+                <button onclick="app.setTab('facility')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-100 flex items-center gap-3 font-bold text-slate-600 transition nav-btn" data-target="facility"><i class="fa-solid fa-church"></i> 施設</button>
+                <button onclick="app.setTab('finance')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-100 flex items-center gap-3 font-bold text-slate-600 transition nav-btn" data-target="finance"><i class="fa-solid fa-building-columns"></i> 財務</button>
             </div>
         </aside>
 
-        <main class="flex-grow bg-slate-100 p-4 pb-24 md:pb-6 overflow-y-auto relative" id="mainArea"></main>
+        <main class="flex-grow bg-slate-100 p-4 pb-32 md:pb-6 overflow-y-auto" id="mainArea"></main>
 
         <div class="fixed bottom-24 right-5 md:hidden z-30">
-            <button onclick="app.startWorship()" id="mobileWorshipBtn" class="w-16 h-16 bg-church-900 text-white rounded-full shadow-2xl flex items-center justify-center border-4 border-slate-100 active:scale-95 transition-transform">
+            <button onclick="app.startWorship()" id="mobileWorshipBtn" class="w-16 h-16 bg-church-900 text-white rounded-full shadow-2xl flex items-center justify-center border-4 border-white active:scale-95 transition-transform">
                 <i class="fa-solid fa-fire text-xl text-gold-500"></i>
             </button>
-            <div class="text-[10px] font-bold text-slate-500 text-center mt-1 bg-white/80 rounded px-1 backdrop-blur-sm">礼拝開催</div>
         </div>
-        
-        <div id="toastContainer" class="fixed top-20 left-1/2 transform -translate-x-1/2 w-11/12 max-w-sm z-50 pointer-events-none space-y-2"></div>
     </div>
 
-    <nav class="md:hidden bg-white border-t border-slate-200 flex justify-between items-center h-20 shrink-0 safe-area-bottom z-40 px-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <button onclick="app.setTab('dashboard')" class="flex flex-col items-center gap-1 text-slate-400 active:text-church-900 w-12 nav-icon" data-target="dashboard"><i class="fa-solid fa-chart-line text-xl"></i><span class="text-[10px] font-bold">状況</span></button>
-        <button onclick="app.setTab('personnel')" class="flex flex-col items-center gap-1 text-slate-400 active:text-church-900 w-12 nav-icon" data-target="personnel"><i class="fa-solid fa-user-tie text-xl"></i><span class="text-[10px] font-bold">人事</span></button>
-        <div class="w-8"></div>
-        <button onclick="app.setTab('facility')" class="flex flex-col items-center gap-1 text-slate-400 active:text-church-900 w-12 nav-icon" data-target="facility"><i class="fa-solid fa-church text-xl"></i><span class="text-[10px] font-bold">施設</span></button>
-        <button onclick="app.setTab('finance')" class="flex flex-col items-center gap-1 text-slate-400 active:text-church-900 w-12 nav-icon" data-target="finance"><i class="fa-solid fa-building-columns text-xl"></i><span class="text-[10px] font-bold">財務</span></button>
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-between items-start pt-3 px-6 z-40 safe-area-bottom shadow-[0_-4px_10px_rgba(0,0,0,0.05)] h-20">
+        <button onclick="app.setTab('dashboard')" class="flex flex-col items-center gap-1 w-12 nav-icon text-slate-400" data-target="dashboard">
+            <i class="fa-solid fa-chart-line text-xl"></i><span class="text-[10px] font-bold">状況</span>
+        </button>
+        <button onclick="app.setTab('personnel')" class="flex flex-col items-center gap-1 w-12 nav-icon text-slate-400" data-target="personnel">
+            <i class="fa-solid fa-user-tie text-xl"></i><span class="text-[10px] font-bold">人事</span>
+        </button>
+        <div class="w-8"></div><button onclick="app.setTab('facility')" class="flex flex-col items-center gap-1 w-12 nav-icon text-slate-400" data-target="facility">
+            <i class="fa-solid fa-church text-xl"></i><span class="text-[10px] font-bold">施設</span>
+        </button>
+        <button onclick="app.setTab('finance')" class="flex flex-col items-center gap-1 w-12 nav-icon text-slate-400" data-target="finance">
+            <i class="fa-solid fa-building-columns text-xl"></i><span class="text-[10px] font-bold">財務</span>
+        </button>
     </nav>
 
     <div id="resultModal" class="fixed inset-0 bg-church-900/90 z-[60] hidden items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-[fade-in-up_0.3s]">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
             <div class="bg-church-900 text-white p-4 flex justify-between items-center">
-                <h3 class="font-bold"><i class="fa-solid fa-cross text-gold-500 mr-2"></i>礼拝レポート</h3>
+                <h3 class="font-bold">礼拝レポート</h3>
                 <span class="text-xs font-mono text-slate-400" id="resDate">Y1/M1</span>
             </div>
             <div class="p-6">
                 <div class="grid grid-cols-2 gap-4 text-center mb-6">
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                        <div class="text-[10px] text-slate-500 font-bold uppercase">出席者</div>
+                        <div class="text-[10px] text-slate-500 uppercase">出席者</div>
                         <div class="text-2xl font-black text-church-900" id="resAttendance">0</div>
                         <div class="text-[10px] text-emerald-600 font-bold" id="resNewMembers">+0 新規</div>
                     </div>
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                        <div class="text-[10px] text-slate-500 font-bold uppercase">献金</div>
+                        <div class="text-[10px] text-slate-500 uppercase">献金</div>
                         <div class="text-2xl font-black text-gold-600" id="resOffering">¥0</div>
                     </div>
                 </div>
                 <div class="bg-slate-50 p-3 rounded-lg text-xs space-y-1 mb-6 h-32 overflow-y-auto border border-slate-200 text-slate-600" id="resHighlights"></div>
-                <button onclick="app.closeResult()" class="w-full bg-church-900 text-white py-3 rounded-xl font-bold hover:bg-church-700 transition shadow-lg">次の週へ</button>
+                <button onclick="app.closeResult()" class="w-full bg-church-900 text-white py-3 rounded-xl font-bold shadow-lg">次の週へ</button>
             </div>
         </div>
     </div>
 
+    <div id="toastContainer" class="fixed top-20 left-1/2 transform -translate-x-1/2 w-11/12 max-w-sm z-50 pointer-events-none space-y-2"></div>
+
     <script>
-        /* CONSTANTS */
+        /* GAME DATA */
         const SAVE_KEY = 'kt_mobile_save_v4'; 
-        const ROLES = {
-            pastor: { label: '牧師', icon: 'fa-user-tie' },
-            worship: { label: '奏楽', icon: 'fa-music' },
-            youth: { label: '青年', icon: 'fa-child-reaching' },
-            admin: { label: '事務', icon: 'fa-calculator' }
-        };
+        const ROLES = { pastor: { label: '牧師', icon: 'fa-user-tie' }, worship: { label: '奏楽', icon: 'fa-music' }, youth: { label: '青年', icon: 'fa-child-reaching' }, admin: { label: '事務', icon: 'fa-calculator' } };
         const RANK_COLORS = { D: 'text-slate-400', C: 'text-green-500', B: 'text-blue-500', A: 'text-pink-500', S: 'text-gold-500' };
         const FACILITIES = {
-            sound: { name: '音響設備', levels: [
-                { name: 'ラジカセ', cost: 0, effect: 0 }, { name: '簡易PA', cost: 100000, effect: 10 },
-                { name: '業務用機材', cost: 500000, effect: 25 }, { name: 'コンサート級', cost: 2000000, effect: 50 }
-            ]},
-            building: { name: '会堂規模', levels: [
-                { name: '借家', cost: 0, cap: 20, upkeep: 10000 }, { name: 'テナント小', cost: 1000000, cap: 50, upkeep: 50000 },
-                { name: 'テナント大', cost: 5000000, cap: 100, upkeep: 150000 }, { name: '単立会堂', cost: 30000000, cap: 300, upkeep: 300000 },
-                { name: '大聖堂', cost: 100000000, cap: 1000, upkeep: 1000000 }
-            ]}
+            sound: { name: '音響設備', levels: [{ name: 'ラジカセ', cost: 0, effect: 0 }, { name: '簡易PA', cost: 100000, effect: 10 }, { name: '業務用機材', cost: 500000, effect: 25 }, { name: 'コンサート級', cost: 2000000, effect: 50 }] },
+            building: { name: '会堂規模', levels: [{ name: '借家', cost: 0, cap: 20, upkeep: 10000 }, { name: 'テナント小', cost: 1000000, cap: 50, upkeep: 50000 }, { name: 'テナント大', cost: 5000000, cap: 100, upkeep: 150000 }, { name: '単立会堂', cost: 30000000, cap: 300, upkeep: 300000 }, { name: '大聖堂', cost: 100000000, cap: 1000, upkeep: 1000000 }] }
         };
 
-        /* GAME ENGINE */
         const game = {
             state: { year: 1, month: 1, week: 1, funds: 3000000, members: 10, reputation: 0, staff: [], facilities: { sound: 0, building: 0 } },
-            
-            save(manual = false) {
-                localStorage.setItem(SAVE_KEY, JSON.stringify(this.state));
-                if(manual) app.toast('データを保存しました');
-            },
-            load() {
-                const data = localStorage.getItem(SAVE_KEY);
-                if (data) { this.state = JSON.parse(data); return true; }
-                return false;
-            },
+            save() { localStorage.setItem(SAVE_KEY, JSON.stringify(this.state)); },
+            load() { const data = localStorage.getItem(SAVE_KEY); if (data) { this.state = JSON.parse(data); return true; } return false; },
             generateStaff() {
-                const names = ['ペテロ', 'ヨハネ', 'パウロ', 'マリア', 'ルツ', 'ダビデ', 'サラ', 'ノア', 'エステル'];
-                const lasts = ['田中', '佐藤', '鈴木', '高橋', '伊藤', '山本'];
+                const names = ['ペテロ', 'ヨハネ', 'パウロ', 'マリア', 'ルツ', 'ダビデ'];
                 const roleKeys = Object.keys(ROLES);
                 const role = roleKeys[Math.floor(Math.random() * roleKeys.length)];
-                const rRand = Math.random();
-                let rankIdx = rRand > 0.98 ? 4 : rRand > 0.9 ? 3 : rRand > 0.7 ? 2 : rRand > 0.4 ? 1 : 0;
+                const rankIdx = Math.random() > 0.8 ? 2 : Math.random() > 0.4 ? 1 : 0;
                 const ranks = ['D','C','B','A','S'];
-                const baseStat = (rankIdx + 1) * 15 + Math.floor(Math.random() * 10);
-                const salary = (rankIdx + 1) * 50000 + Math.floor(Math.random() * 10000);
-                return {
-                    id: Date.now() + Math.random(),
-                    name: `${names[Math.floor(Math.random() * names.length)]} ${lasts[Math.floor(Math.random() * lasts.length)]}`,
-                    role, rank: ranks[rankIdx],
-                    stats: { preach: Math.max(0, role=='pastor'?baseStat+10:baseStat-10), care: baseStat, admin: baseStat },
-                    salary, cost: salary * 3
-                };
-            },
-            calculatePower() {
-                let p = { preach: 0, worship: 0, care: 0 };
-                this.state.staff.forEach(s => {
-                    p.preach += s.stats.preach || 0;
-                    p.worship += s.role === 'worship' ? (s.stats.care || 0) * 1.5 : 0;
-                    p.care += s.stats.care || 0;
-                });
-                const soundEff = FACILITIES.sound.levels[this.state.facilities.sound].effect;
-                return {
-                    preach: Math.max(10, p.preach),
-                    worship: Math.max(5, p.worship + soundEff),
-                    care: Math.max(10, p.care),
-                    capacity: FACILITIES.building.levels[this.state.facilities.building].cap
-                };
+                const baseStat = (rankIdx + 1) * 20;
+                return { id: Date.now() + Math.random(), name: names[Math.floor(Math.random()*names.length)] + 'さん', role, rank: ranks[rankIdx], stats: { preach: baseStat, care: baseStat, admin: baseStat }, salary: (rankIdx+1)*50000, cost: (rankIdx+1)*150000 };
             }
         };
 
-        /* UI CONTROLLER */
         const app = {
             currentTab: 'dashboard',
             candidates: [],
-
             init() {
-                if (!game.load()) {
-                    game.state.staff = [{ id: 1, name: 'あなた', role: 'pastor', rank: 'C', stats: { preach: 40, care: 40, admin: 30 }, salary: 150000, cost: 0 }];
-                }
+                if (!game.load()) { game.state.staff = [{ id: 1, name: 'あなた', role: 'pastor', rank: 'C', stats: { preach: 40, care: 40, admin: 30 }, salary: 150000, cost: 0 }]; }
                 this.candidates = Array.from({length: 3}, () => game.generateStaff());
                 this.updateUI();
                 this.render();
             },
-
-            setTab(tab) {
-                this.currentTab = tab;
-                this.updateUI();
-                this.render();
-            },
-
+            setTab(tab) { this.currentTab = tab; this.updateUI(); this.render(); },
             updateUI() {
                 const s = game.state;
                 document.getElementById('uiYear').innerText = s.year;
                 document.getElementById('uiMonth').innerText = s.month;
                 document.getElementById('uiFunds').innerText = s.funds.toLocaleString();
                 document.getElementById('uiMembers').innerText = s.members;
-                document.getElementById('uiReputation').innerText = `Lv.${Math.floor(s.reputation/100)+1}`;
-                
                 document.querySelectorAll('.nav-icon, .nav-btn').forEach(el => {
-                    const target = el.getAttribute('data-target');
-                    if (target === this.currentTab) {
-                        el.classList.add('text-church-900', 'bg-slate-100');
-                        el.classList.remove('text-slate-400');
-                    } else {
-                        el.classList.remove('text-church-900', 'bg-slate-100');
-                        el.classList.add('text-slate-400');
-                    }
+                    if (el.getAttribute('data-target') === this.currentTab) { el.classList.replace('text-slate-400', 'text-church-900'); }
+                    else { el.classList.replace('text-church-900', 'text-slate-400'); }
                 });
             },
-
             render() {
                 const main = document.getElementById('mainArea');
                 const s = game.state;
-                
                 if (this.currentTab === 'dashboard') {
-                    const power = game.calculatePower();
-                    const upkeep = s.staff.reduce((a,b)=>a+b.salary,0) + FACILITIES.building.levels[s.facilities.building].upkeep;
-                    
-                    main.innerHTML = `
-                        <div class="space-y-4 animate-[fade-in-up_0.3s]">
-                            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                                <h2 class="font-bold text-church-900 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-pie"></i> 教会パラメーター</h2>
-                                <div class="space-y-3">
-                                    <div><div class="flex justify-between text-xs font-bold mb-1">説教力 <span class="text-rose-500">${power.preach}</span></div><div class="stat-bar-bg"><div class="stat-bar-fill bg-rose-500" style="width:${Math.min(100,power.preach)}%"></div></div></div>
-                                    <div><div class="flex justify-between text-xs font-bold mb-1">礼拝の雰囲気 <span class="text-amber-500">${power.worship}</span></div><div class="stat-bar-bg"><div class="stat-bar-fill bg-amber-500" style="width:${Math.min(100,power.worship)}%"></div></div></div>
-                                    <div><div class="flex justify-between text-xs font-bold mb-1">牧会ケア <span class="text-emerald-500">${power.care}</span></div><div class="stat-bar-bg"><div class="stat-bar-fill bg-emerald-500" style="width:${Math.min(100,power.care)}%"></div></div></div>
-                                </div>
-                            </div>
-                            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                                <h2 class="font-bold text-church-900 mb-2 flex items-center gap-2"><i class="fa-solid fa-users"></i> スタッフ一覧</h2>
-                                <div class="space-y-2">
-                                    ${s.staff.map(st => `<div class="flex justify-between items-center p-2 bg-slate-50 rounded border border-slate-100"><div class="flex items-center gap-2"><div class="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-slate-200 text-slate-400"><i class="fa-solid ${ROLES[st.role].icon}"></i></div><div class="text-xs font-bold">${st.name}</div></div><div class="text-lg font-black italic ${RANK_COLORS[st.rank]}">${st.rank}</div></div>`).join('')}
-                                </div>
-                            </div>
-                            <div class="bg-church-900 text-white p-5 rounded-xl shadow-lg text-sm">
-                                <div class="flex justify-between mb-2"><span class="text-slate-400">会堂定員</span> <span class="font-bold">${power.capacity}名</span></div>
-                                <div class="flex justify-between"><span class="text-slate-400">月間維持費</span> <span class="font-bold text-red-300">-¥${upkeep.toLocaleString()}</span></div>
-                            </div>
+                    main.innerHTML = `<div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-4 animate-[fade-in-up_0.3s]">
+                        <h2 class="font-bold text-church-900 mb-4">教会ステータス</h2>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span>説教力</span><span>${s.staff.reduce((a,b)=>a+(b.stats.preach||0),0)}</span></div>
+                            <div class="flex justify-between"><span>信徒ケア</span><span>${s.staff.reduce((a,b)=>a+(b.stats.care||0),0)}</span></div>
                         </div>
-                    `;
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                        <h2 class="font-bold text-church-900 mb-4">スタッフ</h2>
+                        ${s.staff.map(st => `<div class="text-sm p-2 bg-slate-50 mb-1 rounded flex justify-between"><span>${st.name} (${ROLES[st.role].label})</span><span class="font-bold ${RANK_COLORS[st.rank]}">${st.rank}</span></div>`).join('')}
+                    </div>`;
                 } else if (this.currentTab === 'personnel') {
-                    main.innerHTML = `
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 animate-[fade-in-up_0.3s]">
-                            ${this.candidates.map((c, i) => `
-                                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
-                                    <div class="absolute top-0 right-0 px-2 py-1 bg-slate-100 text-[10px] font-bold rounded-bl-lg">契約金: ¥${c.cost.toLocaleString()}</div>
-                                    <div class="flex items-center gap-3 mb-3">
-                                        <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-church-600 border border-slate-200"><i class="fa-solid ${ROLES[c.role].icon}"></i></div>
-                                        <div><div class="text-[10px] font-bold text-slate-400">${ROLES[c.role].label}</div><div class="font-bold text-sm">${c.name} <span class="italic ${RANK_COLORS[c.rank]}">Rank ${c.rank}</span></div></div>
-                                    </div>
-                                    <div class="flex justify-between items-center mt-2">
-                                        <div class="text-[10px] text-slate-500">月給: ¥${c.salary.toLocaleString()}</div>
-                                        <button onclick="app.hireStaff(${i})" class="bg-church-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gold-500 hover:text-church-900 transition">採用</button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                            <button onclick="app.refreshCandidates()" class="col-span-1 md:col-span-2 py-3 border border-dashed border-slate-400 text-slate-500 rounded-xl hover:bg-white hover:text-church-900 transition text-sm font-bold"><i class="fa-solid fa-rotate mr-1"></i> 候補者を更新 (¥10,000)</button>
-                        </div>
-                    `;
+                    main.innerHTML = `<div class="space-y-4 animate-[fade-in-up_0.3s]">
+                        ${this.candidates.map((c, i) => `<div class="bg-white p-4 rounded-xl border border-slate-200">
+                            <div class="font-bold text-sm">${c.name} (${ROLES[c.role].label})</div>
+                            <div class="text-xs text-slate-500 mb-2 italic">Rank ${c.rank} / 契約金 ¥${c.cost.toLocaleString()}</div>
+                            <button onclick="app.hireStaff(${i})" class="w-full bg-church-900 text-white py-2 rounded-lg text-xs font-bold">招聘する</button>
+                        </div>`).join('')}
+                    </div>`;
                 } else if (this.currentTab === 'facility') {
-                    const renderUpgrade = (key, data) => {
-                        const cur = s.facilities[key];
-                        const next = data.levels[cur + 1];
-                        return `
-                            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-4">
-                                <h3 class="font-bold mb-1">${data.name}</h3>
-                                <div class="text-xs text-gold-500 font-bold mb-3">Current: ${data.levels[cur].name}</div>
-                                ${next ? `<button onclick="app.upgradeFacility('${key}')" class="w-full bg-church-900 text-white py-2 rounded-lg text-sm font-bold hover:bg-gold-500 hover:text-church-900 transition">Lv.UP (¥${next.cost.toLocaleString()})</button><div class="text-[10px] text-center text-slate-400 mt-1">Next: ${next.name}</div>` : `<div class="w-full bg-slate-100 text-slate-400 py-2 rounded-lg text-center text-xs font-bold">MAX LEVEL</div>`}
-                            </div>
-                        `;
-                    };
-                    main.innerHTML = `<div class="animate-[fade-in-up_0.3s]">${renderUpgrade('sound', FACILITIES.sound)}${renderUpgrade('building', FACILITIES.building)}</div>`;
+                    main.innerHTML = `<div class="bg-white p-5 rounded-xl border animate-[fade-in-up_0.3s]">
+                        <h2 class="font-bold text-sm mb-4 text-center">施設は準備中です</h2>
+                    </div>`;
                 } else {
-                    main.innerHTML = `<div class="text-center mt-10 text-slate-400 text-sm">財務・方針機能は次回アップデートで追加予定！</div>`;
+                    main.innerHTML = `<div class="text-center mt-10 text-slate-400 text-xs">財務・方針機能は次回！</div>`;
                 }
             },
-
-            /* GAME ACTIONS */
             startWorship() {
                 const s = game.state;
-                const power = game.calculatePower();
-                const btn = document.getElementById('mobileWorshipBtn') || document.querySelector('aside button');
+                const btn = document.getElementById('mobileWorshipBtn');
+                btn.classList.add('worship-active');
                 
-                // Animation
-                if(btn) btn.classList.add('worship-active');
-
-                // Logic
-                let att = Math.floor(s.members * 0.9 + (s.reputation * 0.1) + (Math.random() * s.members * 0.2));
-                att = Math.min(att, power.capacity);
-                
-                let newMem = 0;
-                if (Math.random() < (power.preach / 200)) newMem = Math.floor(1 + Math.random() * 3);
-                
-                const sat = Math.min(100, Math.floor((power.preach + power.worship) / 2 + (Math.random() * 20)));
-                const offering = (att + newMem) * (2000 + sat * 20);
-
-                const logs = [];
-                if(att>=power.capacity) logs.push(`<span class="text-amber-500">満員御礼！</span> 会堂が狭すぎます`);
-                if(sat>80) logs.push(`<span class="text-emerald-500">大感動！</span> 会衆は涙を流しました`);
-                if(newMem>0) logs.push(`<span class="text-blue-500">救い！</span> ${newMem}名が導かれました`);
-
-                // Update State
-                s.funds += offering;
-                if(sat>60) s.members += newMem;
-                else if(sat<30) s.members = Math.max(0, s.members-1);
-                s.reputation += sat>70 ? 2 : 0;
-                
+                let att = Math.floor(s.members * 1.2);
+                let off = att * 3000;
+                s.funds += off;
                 s.week++;
-                if(s.week > 4) {
-                    s.week = 1; s.month++;
-                    const cost = s.staff.reduce((a,b)=>a+b.salary,0) + FACILITIES.building.levels[s.facilities.building].upkeep;
-                    s.funds -= cost;
-                    logs.push(`<span class="text-red-400">月次決算</span> 経費 ¥${cost.toLocaleString()} を支出`);
-                    if(s.month>12) { s.month=1; s.year++; }
-                }
+                if(s.week > 4) { s.week = 1; s.month++; if(s.month>12){s.month=1; s.year++;} }
                 game.save();
-
+                
                 setTimeout(() => {
-                    if(btn) btn.classList.remove('worship-active');
-                    this.showResult(att+newMem, newMem, offering, logs);
+                    btn.classList.remove('worship-active');
+                    this.showResult(att, off);
                     this.updateUI();
-                }, 1500);
+                }, 1000);
             },
-
             hireStaff(idx) {
                 const c = this.candidates[idx];
-                if(game.state.funds < c.cost) return this.toast('資金が足りません', 'error');
+                if(game.state.funds < c.cost) return alert('資金不足です');
                 game.state.funds -= c.cost;
                 game.state.staff.push(c);
                 this.candidates.splice(idx, 1);
-                this.toast(`${c.name}を雇用しました！`);
                 game.save();
                 this.updateUI(); this.render();
             },
-
-            refreshCandidates() {
-                if(game.state.funds < 10000) return this.toast('資金不足です', 'error');
-                game.state.funds -= 10000;
-                this.candidates = Array.from({length: 3}, () => game.generateStaff());
-                this.toast('候補者を更新しました');
-                this.updateUI(); this.render();
-            },
-
-            upgradeFacility(key) {
-                const s = game.state;
-                const next = FACILITIES[key].levels[s.facilities[key] + 1];
-                if(s.funds < next.cost) return this.toast('資金が足りません', 'error');
-                s.funds -= next.cost;
-                s.facilities[key]++;
-                this.toast('設備を改修しました！');
-                game.save();
-                this.updateUI(); this.render();
-            },
-
-            showResult(att, isNew, off, logs) {
+            showResult(att, off) {
                 document.getElementById('resAttendance').innerText = att;
-                document.getElementById('resNewMembers').innerText = `+${isNew} 新規`;
                 document.getElementById('resOffering').innerText = `¥${off.toLocaleString()}`;
-                document.getElementById('resHighlights').innerHTML = logs.map(l => `<div>• ${l}</div>`).join('');
-                document.getElementById('resDate').innerText = `Y${game.state.year}/M${game.state.month}`;
+                document.getElementById('resHighlights').innerHTML = `<div>今日も恵まれた礼拝でした。</div>`;
                 document.getElementById('resultModal').classList.replace('hidden', 'flex');
             },
-
-            closeResult() {
-                document.getElementById('resultModal').classList.replace('flex', 'hidden');
-                this.render();
-            },
-
-            resetGame() {
-                if(confirm('データを完全に消去しますか？')) {
-                    localStorage.removeItem(SAVE_KEY);
-                    location.reload();
-                }
-            },
-            
-            toast(msg, type='success') {
-                const con = document.getElementById('toastContainer');
-                const t = document.createElement('div');
-                t.className = `toast p-3 rounded-lg shadow-lg text-white text-xs font-bold ${type==='success'?'bg-emerald-500':'bg-red-500'}`;
-                t.innerText = msg;
-                con.appendChild(t);
-                setTimeout(()=>t.remove(), 3000);
-            },
-            toggleMenu() { document.getElementById('menuDropdown').classList.toggle('hidden'); }
+            closeResult() { document.getElementById('resultModal').classList.replace('flex', 'hidden'); },
+            toggleMenu() { document.getElementById('menuDropdown').classList.toggle('hidden'); },
+            resetGame() { if(confirm('初期化しますか？')){localStorage.clear(); location.reload();} }
         };
 
         window.onload = () => app.init();
