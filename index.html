@@ -1,673 +1,367 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Church Stewardship Manager Ver 3.1 (Simulator)</title>
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            church: { 50: '#f8fafc', 100: '#f1f5f9', 600: '#475569', 800: '#1e293b', 900: '#0f172a' }
-          }
-        }
-      }
-    }
-  </script>
-
-  <style>
-    @media print {
-      .no-print { display: none !important; }
-      .print-only { display: block !important; }
-      body { background: white !important; }
-      .card { border: 1px solid #ccc !important; box-shadow: none !important; }
-    }
-    .chart-container { position: relative; height: 350px; width: 100%; }
-    input[type="range"] { accent-color: #0f172a; height: 8px; }
-    input[type=number]::-webkit-inner-spin-button,
-    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-  </style>
-</head>
-
-<body class="bg-slate-50 text-slate-800 antialiased">
-
-  <nav class="bg-church-900 text-white shadow-md no-print">
-    <div class="max-w-6xl mx-auto px-4 h-16 flex justify-between items-center">
-      <div class="flex items-center space-x-2">
-        <i class="fa-solid fa-church text-xl"></i>
-        <span class="font-bold tracking-tight">Church Stewardship Manager</span>
-        <span class="text-[10px] opacity-70">Ver 3.1</span>
-      </div>
-      <div class="flex items-center space-x-3">
-        <button onclick="toggleMode()" class="flex items-center space-x-2 bg-church-800 px-3 py-1.5 rounded-full border border-church-600 hover:bg-church-600 transition">
-          <i id="mode-icon" class="fa-solid fa-cross text-xs"></i>
-          <span id="mode-text" class="text-xs font-bold">牧会モード</span>
-        </button>
-      </div>
-    </div>
-  </nav>
-
-  <main class="max-w-6xl mx-auto px-4 py-8">
-
-    <!-- KPI Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <p class="text-xs font-bold text-slate-500 uppercase term-income-summary">現在の月間収入予測</p>
-        <h3 class="text-3xl font-bold text-church-900 mt-2" id="totalIncomeDisplay">¥0</h3>
-        <p class="text-xs text-slate-400 mt-1">平均単価: <span id="avgPriceDisplay">¥0</span> /人</p>
-        <p class="text-[10px] text-slate-400 mt-1">※ 標準（レンジ中点）と下振れ〜上振れ</p>
-      </div>
-
-      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <p class="text-xs font-bold text-slate-500 uppercase term-balance-summary">月間収支バランス</p>
-        <h3 class="text-3xl font-bold text-slate-300 mt-2 whitespace-pre-line" id="monthlyBalanceDisplay">---</h3>
-        <p class="text-xs text-slate-400 mt-1 term-balance-desc">収入 - 固定費</p>
-      </div>
-
-      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <p class="text-xs font-bold text-slate-500 uppercase term-life-label">資金持続予測</p>
-        <h3 class="text-3xl font-bold text-slate-300 mt-2" id="lifeDisplay">---</h3>
-        <p class="text-xs text-slate-400 mt-1 term-life-desc">下振れケースでの目安</p>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-
-      <!-- Left Column -->
-      <div class="lg:col-span-5 space-y-6 no-print">
-
-        <!-- Fixed Cost + Savings -->
-        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <header class="bg-slate-100 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
-            <h4 class="text-sm font-bold text-church-900 term-cost-title">
-              <i class="fa-solid fa-file-invoice-dollar mr-2"></i>維持費の設定
-            </h4>
-          </header>
-          <div class="p-5 space-y-4">
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-xs font-bold text-slate-500 mb-1 term-fixed-cost">月額固定費</label>
-                <div class="relative">
-                  <span class="absolute left-3 top-2 text-slate-400 text-sm">¥</span>
-                  <input type="number" id="fixedCost" placeholder="320000"
-                    class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-church-900 outline-none"
-                    oninput="calculate()">
-                </div>
-              </div>
-              <div>
-                <label class="block text-xs font-bold text-slate-500 mb-1 term-savings">現在の備え(預金)</label>
-                <div class="relative">
-                  <span class="absolute left-3 top-2 text-slate-400 text-sm">¥</span>
-                  <input type="number" id="savings" placeholder="380000"
-                    class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-church-900 outline-none"
-                    oninput="calculate()">
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Assumptions -->
-        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <header class="bg-slate-100 px-5 py-3 border-b border-slate-200">
-            <h4 class="text-sm font-bold text-church-900">
-              <i class="fa-solid fa-sliders mr-2"></i>シミュレーション前提
-            </h4>
-          </header>
-          <div class="p-5 grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-bold text-slate-500 mb-1">人数あたり変動費（目安）</label>
-              <div class="relative">
-                <span class="absolute left-3 top-2 text-slate-400 text-sm">¥</span>
-                <input type="number" id="varCostPerPerson" placeholder="例: 200"
-                  class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-church-900 outline-none"
-                  oninput="calculate()">
-              </div>
-              <p class="text-[10px] text-slate-400 mt-1">茶菓・印刷・備品など（0でもOK）</p>
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold text-slate-500 mb-1">損益分岐人数</label>
-              <div class="text-2xl font-extrabold text-slate-300 mt-1" id="breakEvenDisplay">---</div>
-              <p class="text-[10px] text-slate-400 mt-1">固定費 ÷（1人あたり貢献利益）</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- Distribution Input -->
-        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <header class="bg-slate-100 px-5 py-3 border-b border-slate-200">
-            <h4 class="text-sm font-bold text-church-900 term-income-title">
-              <i class="fa-solid fa-layer-group mr-2"></i>献金の分布（レンジ別人数）
-            </h4>
-          </header>
-
-          <div class="p-5 space-y-3">
-            <p class="text-xs text-slate-500 leading-relaxed">
-              個人を特定しないために、金額レンジごとの人数だけ入れます（匿名・安全設計）。
-            </p>
-
-            <div class="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200">
-              <div class="text-xs font-bold text-slate-600">0円</div>
-              <div class="flex items-center space-x-2">
-                <span class="text-[10px] text-slate-400">人数</span>
-                <input type="number" id="d0" min="0" placeholder="0"
-                  class="w-20 border-slate-200 rounded p-1.5 text-sm font-bold text-center bg-white"
-                  oninput="calculate()">
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-100">
-              <div class="text-xs font-bold text-blue-800">1〜1,000円</div>
-              <div class="flex items-center space-x-2">
-                <span class="text-[10px] text-slate-400">人数</span>
-                <input type="number" id="d1" min="0" placeholder="0"
-                  class="w-20 border-blue-200 rounded p-1.5 text-sm font-bold text-center bg-white"
-                  oninput="calculate()">
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-              <div class="text-xs font-bold text-emerald-800">1,001〜5,000円</div>
-              <div class="flex items-center space-x-2">
-                <span class="text-[10px] text-slate-400">人数</span>
-                <input type="number" id="d2" min="0" placeholder="0"
-                  class="w-20 border-emerald-200 rounded p-1.5 text-sm font-bold text-center bg-white"
-                  oninput="calculate()">
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between bg-amber-50 p-3 rounded-lg border border-amber-100">
-              <div class="text-xs font-bold text-amber-800">5,001〜20,000円</div>
-              <div class="flex items-center space-x-2">
-                <span class="text-[10px] text-slate-400">人数</span>
-                <input type="number" id="d3" min="0" placeholder="0"
-                  class="w-20 border-amber-200 rounded p-1.5 text-sm font-bold text-center bg-white"
-                  oninput="calculate()">
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between bg-rose-50 p-3 rounded-lg border border-rose-100">
-              <div class="text-xs font-bold text-rose-800">20,001円〜（上限あり）</div>
-              <div class="flex items-center space-x-2">
-                <span class="text-[10px] text-slate-400">人数</span>
-                <input type="number" id="d4" min="0" placeholder="0"
-                  class="w-20 border-rose-200 rounded p-1.5 text-sm font-bold text-center bg-white"
-                  oninput="calculate()">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-              <div>
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">上限（20,001円〜の最大値）</label>
-                <div class="relative">
-                  <span class="absolute left-3 top-2 text-slate-400 text-sm">¥</span>
-                  <input type="number" id="topCap" placeholder="例: 80000"
-                    class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-700"
-                    oninput="calculate()">
-                </div>
-              </div>
-              <div class="flex items-end justify-end">
-                <div class="text-right">
-                  <div class="text-xs font-bold text-slate-500">出席人数計</div>
-                  <div class="text-lg font-extrabold text-church-900"><span id="totalPeopleDisplay">0</span> 名</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[10px] text-slate-500 leading-relaxed">
-              <div class="font-bold text-slate-600 mb-1">計算ルール（最短実装）</div>
-              <ul class="list-disc ml-4 space-y-1">
-                <li>下振れ：各レンジの最小値で計算</li>
-                <li>標準：各レンジの中点で計算（中央値の代替）</li>
-                <li>上振れ：各レンジの最大値で計算</li>
-                <li>runway は下振れケースで表示（安全側）</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <!-- Right Column -->
-      <div class="lg:col-span-7 space-y-6">
-
-        <div class="bg-church-900 rounded-xl shadow-lg p-6 text-white no-print">
-          <div class="flex justify-between items-end mb-4">
-            <div>
-              <h4 class="text-sm font-bold text-church-100 opacity-80 mb-1 term-slider-title">未来シミュレーション</h4>
-              <p class="text-xs text-slate-400">現在の分布（1人あたり期待値レンジ）のまま人数が増えたら？</p>
-            </div>
-            <div class="text-right">
-              <span class="text-4xl font-bold tracking-tight" id="simPeopleDisplay">0</span>
-              <span class="text-sm font-medium opacity-70">名</span>
-            </div>
-          </div>
-          <input type="range" id="peopleSlider" min="0" max="100" value="0"
-            class="w-full h-3 bg-church-600 rounded-lg appearance-none cursor-pointer hover:bg-church-500 transition"
-            oninput="updateSliderAndChart()">
-          <div class="flex justify-between text-xs text-slate-400 mt-2">
-            <span>0名</span><span>50名</span><span>100名</span>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 card">
-          <div class="chart-container">
-            <canvas id="cvpChart"></canvas>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden card">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-100 text-slate-500">
-              <tr>
-                <th class="px-4 py-3 font-bold term-col-q">人数規模</th>
-                <th class="px-4 py-3 font-bold term-col-income">予測月収</th>
-                <th class="px-4 py-3 font-bold term-col-balance text-center">月間収支</th>
-                <th class="px-4 py-3 font-bold term-col-status text-right">判定</th>
-              </tr>
-            </thead>
-            <tbody id="analysisTable" class="divide-y divide-slate-100"></tbody>
-          </table>
-        </div>
-
-      </div>
-    </div>
-  </main>
-
-  <footer class="text-center py-8 text-slate-400 text-xs no-print">
-    <p>Church Stewardship Manager Ver 3.1 (Simulator)</p>
-  </footer>
-
-  <script>
-    // --- 用語辞書（モード切替：任意） ---
-    const terms = {
-      business: {
-        incomeSummary: "月間売上予測（レンジ）",
-        balanceSummary: "営業利益予測（レンジ）",
-        balanceDesc: "売上 - 固定費",
-        lifeLabel: "バーンレート予測",
-        lifeDesc: "下振れケースでの資金ショートまで",
-        costTitle: "固定費設定",
-        fixedCost: "月額固定費",
-        savings: "内部留保",
-        incomeTitle: "顧客の支払い分布（レンジ別人数）",
-        sliderTitle: "規模拡大シミュレーション",
-        colQ: "顧客数",
-        colIncome: "売上高（レンジ）",
-        colBalance: "営業利益",
-        colStatus: "判定",
-        modeName: "経営モード",
-        icon: "fa-briefcase"
-      },
-      ministry: {
-        incomeSummary: "現在の月間収入予測（レンジ）",
-        balanceSummary: "月間収支バランス（レンジ）",
-        balanceDesc: "収入 - 宣教固定費",
-        lifeLabel: "宣教継続可能期間",
-        lifeDesc: "下振れケースでの目安",
-        costTitle: "維持費の設定",
-        fixedCost: "宣教固定費",
-        savings: "次月繰越金(備え)",
-        incomeTitle: "献金の分布（レンジ別人数）",
-        sliderTitle: "未来シミュレーション",
-        colQ: "人数規模",
-        colIncome: "予測月収（レンジ）",
-        colBalance: "月間収支",
-        colStatus: "状態",
-        modeName: "牧会モード",
-        icon: "fa-cross"
-      }
-    };
-
-    let currentMode = 'ministry';
-    let chart = null;
-
-    // 互換用：標準（中点）平均単価
-    let calculatedAvgPrice = 0;
-
-    function applyMode(mode) {
-      currentMode = mode;
-      const t = terms[currentMode];
-      document.getElementById('mode-text').innerText = t.modeName;
-      document.getElementById('mode-icon').className = `fa-solid ${t.icon} text-xs`;
-
-      Object.keys(t).forEach(key => {
-        const className = `.term-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
-        document.querySelectorAll(className).forEach(el => el.innerText = t[key]);
-      });
-    }
-
-    function toggleMode() {
-      applyMode(currentMode === 'business' ? 'ministry' : 'business');
-    }
-
-    function updateSliderAndChart() {
-      const val = document.getElementById('peopleSlider').value;
-      document.getElementById('simPeopleDisplay').innerText = val;
-      renderChartAndTable();
-      saveData();
-    }
-
-    function yen(n) {
-      return `¥${Math.round(n).toLocaleString()}`;
-    }
-
-    function readCount(id) {
-      return Math.max(0, parseFloat(document.getElementById(id).value) || 0);
-    }
-
-    // 分布レンジ（min/max）定義。d4は上限(topCap)で可変
-    function getDistributionBuckets() {
-      const cap = parseFloat(document.getElementById('topCap').value) || 80000;
-      const safeCap = Math.max(20001, cap); // 下限を守る
-      return [
-        { id: 'd0', min: 0,     max: 0       },
-        { id: 'd1', min: 1,     max: 1000    },
-        { id: 'd2', min: 1001,  max: 5000    },
-        { id: 'd3', min: 5001,  max: 20000   },
-        { id: 'd4', min: 20001, max: safeCap }
-      ];
-    }
-
-    function computeIncomeScenarios() {
-      const buckets = getDistributionBuckets();
-
-      let people = 0;
-      let low = 0;
-      let mid = 0;   // “標準”としてレンジ中点
-      let high = 0;
-
-      buckets.forEach(b => {
-        const c = readCount(b.id);
-        people += c;
-        low  += b.min * c;
-        mid  += ((b.min + b.max) / 2) * c;
-        high += b.max * c;
-      });
-
-      const avgLow  = people > 0 ? low  / people : 0;
-      const avgMid  = people > 0 ? mid  / people : 0;
-      const avgHigh = people > 0 ? high / people : 0;
-
-      return { people, low, mid, high, avgLow, avgMid, avgHigh };
-    }
-
-    function calculate() {
-      const fixedCost = parseFloat(document.getElementById('fixedCost').value) || 0;
-      const savings   = parseFloat(document.getElementById('savings').value) || 0;
-      const v         = parseFloat(document.getElementById('varCostPerPerson').value) || 0;
-
-      const inc = computeIncomeScenarios();
-
-      document.getElementById('totalPeopleDisplay').innerText = inc.people;
-
-      // 収入（レンジ）
-      if (inc.people > 0) {
-        document.getElementById('totalIncomeDisplay').innerText =
-          `${yen(inc.mid)}（${yen(inc.low)}〜${yen(inc.high)}）`;
-        document.getElementById('avgPriceDisplay').innerText =
-          `${yen(inc.avgMid)}（${yen(inc.avgLow)}〜${yen(inc.avgHigh)}）`;
-      } else {
-        document.getElementById('totalIncomeDisplay').innerText = "¥0";
-        document.getElementById('avgPriceDisplay').innerText = "¥0";
-      }
-
-      // 互換（標準平均単価）
-      calculatedAvgPrice = inc.avgMid;
-
-      // 月間収支（標準 + 最悪）
-      const balMid = inc.mid - fixedCost;
-      const balLow = inc.low - fixedCost;
-
-      const balEl = document.getElementById('monthlyBalanceDisplay');
-      if (fixedCost > 0 && inc.people > 0) {
-        const main  = `${balMid >= 0 ? '+' : ''}${yen(balMid)}`;
-        const worst = `最悪: ${balLow >= 0 ? '+' : ''}${yen(balLow)}`;
-        balEl.innerText = `${main}\n${worst}`;
-        balEl.className = balMid >= 0
-          ? "text-3xl font-bold text-emerald-600 mt-2 whitespace-pre-line"
-          : "text-3xl font-bold text-red-500 mt-2 whitespace-pre-line";
-      } else if (fixedCost > 0 && inc.people === 0) {
-        balEl.innerText = "---";
-        balEl.className = "text-3xl font-bold text-slate-300 mt-2";
-      } else {
-        balEl.innerText = "---";
-        balEl.className = "text-3xl font-bold text-slate-300 mt-2";
-      }
-
-      // runway（下振れで算出 = 安全側）
-      const lifeEl = document.getElementById('lifeDisplay');
-      const burnLow = fixedCost - inc.low; // 低収入時の月次資金減少（正なら減る）
-
-      if (fixedCost > 0 && inc.people > 0 && burnLow > 0 && savings > 0) {
-        const months = (savings / burnLow).toFixed(1);
-        lifeEl.innerText = parseFloat(months) < 120 ? `${months}ヶ月` : "10年以上";
-        lifeEl.className = "text-3xl font-bold text-amber-500 mt-2";
-      } else if (fixedCost > 0 && inc.people > 0 && (inc.low - fixedCost) >= 0) {
-        lifeEl.innerText = "維持可能";
-        lifeEl.className = "text-3xl font-bold text-emerald-600 mt-2";
-      } else {
-        lifeEl.innerText = "---";
-        lifeEl.className = "text-3xl font-bold text-slate-300 mt-2";
-      }
-
-      // 損益分岐人数（標準の1人あたり献金 - 変動費/人）
-      const contrib = inc.avgMid - v;
-      const beEl = document.getElementById('breakEvenDisplay');
-
-      if (fixedCost > 0 && inc.people > 0 && contrib > 0) {
-        const be = Math.ceil(fixedCost / contrib);
-        beEl.innerText = `${be}名`;
-        beEl.className = "text-2xl font-extrabold text-church-900 mt-1";
-      } else if (fixedCost > 0 && inc.people > 0 && contrib <= 0) {
-        beEl.innerText = "黒字化条件未達";
-        beEl.className = "text-2xl font-extrabold text-red-500 mt-1";
-      } else {
-        beEl.innerText = "---";
-        beEl.className = "text-2xl font-extrabold text-slate-300 mt-1";
-      }
-
-      renderChartAndTable();
-      saveData();
-    }
-
-    function renderChartAndTable() {
-      const fixedCost = parseFloat(document.getElementById('fixedCost').value) || 0;
-      const v         = parseFloat(document.getElementById('varCostPerPerson').value) || 0;
-      const sliderVal = parseInt(document.getElementById('peopleSlider').value) || 0;
-
-      const inc = computeIncomeScenarios();
-      const avgLow  = inc.avgLow;
-      const avgMid  = inc.avgMid;
-      const avgHigh = inc.avgHigh;
-
-      // ---- Table ----
-      const tbody = document.getElementById('analysisTable');
-      tbody.innerHTML = '';
-
-      if (fixedCost > 0 && inc.people > 0 && avgMid > 0) {
-        const points = [10, 15, 20, 30, 40, 50];
-        if (sliderVal > 0 && !points.includes(sliderVal)) points.push(sliderVal);
-        points.sort((a,b) => a-b);
-
-        points.forEach(q => {
-          const incomeM = avgMid * q;
-          const incomeL = avgLow * q;
-          const incomeH = avgHigh * q;
-
-          const totalCost = fixedCost + (v * q);
-          const bal = incomeM - totalCost;
-
-          const tr = document.createElement('tr');
-          tr.className = (q === sliderVal)
-            ? "bg-church-900 text-white font-bold transition-colors duration-300"
-            : "hover:bg-slate-50";
-
-          tr.innerHTML = `
-            <td class="px-4 py-3">${q}名</td>
-            <td class="px-4 py-3">
-              ${yen(incomeM)}
-              <div class="text-[10px] ${q===sliderVal ? 'text-slate-200' : 'text-slate-400'}">
-                ${yen(incomeL)}〜${yen(incomeH)}
-              </div>
-            </td>
-            <td class="px-4 py-3 text-center">${bal >= 0 ? '+' : ''}${yen(bal)}</td>
-            <td class="px-4 py-3 text-right">
-              <span class="px-2 py-1 rounded-full text-[10px] ${
-                q === sliderVal
-                  ? (bal >= 0 ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white')
-                  : (bal >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-600')
-              }">${bal >= 0 ? '黒字' : '不足'}</span>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
-      } else {
-        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">数値を入力すると分析が表示されます</td></tr>';
-      }
-
-      // ---- Chart ----
-      const ctx = document.getElementById('cvpChart').getContext('2d');
-      const labels = Array.from({length: 61}, (_, i) => i);
-
-      const costData   = labels.map(x => fixedCost + (v * x));
-      const incomeLow  = labels.map(x => avgLow  * x);
-      const incomeMid  = labels.map(x => avgMid  * x);
-      const incomeHigh = labels.map(x => avgHigh * x);
-
-      if (chart) chart.destroy();
-
-      // シミュ点：標準で表示（黒字/赤字色）
-      let pointColor = '#cbd5e1';
-      if (fixedCost > 0 && inc.people > 0 && avgMid > 0) {
-        const balAt = (avgMid * sliderVal) - (fixedCost + v * sliderVal);
-        pointColor = balAt >= 0 ? '#10b981' : '#ef4444';
-      }
-
-      chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: '総費用ライン',
-              data: costData,
-              borderColor: '#ef4444',
-              borderWidth: 2,
-              pointRadius: 0,
-              fill: false
-            },
-            {
-              label: '収入（下振れ）',
-              data: incomeLow,
-              borderColor: '#60a5fa',
-              borderWidth: 2,
-              pointRadius: 0,
-              fill: false
-            },
-            {
-              label: '収入（標準）',
-              data: incomeMid,
-              borderColor: '#10b981',
-              borderWidth: 2,
-              pointRadius: 0,
-              fill: false
-            },
-            {
-              label: '収入（上振れ）',
-              data: incomeHigh,
-              borderColor: '#f59e0b',
-              borderWidth: 2,
-              pointRadius: 0,
-              fill: false
-            },
-            {
-              label: 'シミュレーション位置（標準）',
-              data: labels.map(x => x === sliderVal ? (avgMid * x) : null),
-              pointBackgroundColor: pointColor,
-              pointBorderColor: '#fff',
-              pointBorderWidth: 2,
-              pointRadius: 6,
-              showLine: false
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  if (context.raw === null || context.raw === undefined) return '';
-                  const v = Number(context.raw);
-                  return `${context.dataset.label}: ${yen(v)}`;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KyokaiTsuku - 教会運営プロフェッショナル</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        church: { 800: '#1e293b', 900: '#0f172a' },
+                        gold: { 500: '#eab308' },
+                        rank: { S: '#eab308', A: '#f43f5e', B: '#3b82f6', C: '#22c55e', D: '#94a3b8' }
+                    }
                 }
-              }
             }
-          },
-          scales: {
-            x: { title: { display: true, text: '人数' }, ticks: { stepSize: 10 } },
-            y: { title: { display: true, text: '金額' } }
-          }
         }
-      });
-    }
-
-    function saveData() {
-      const data = {
-        fixedCost: document.getElementById('fixedCost').value,
-        savings: document.getElementById('savings').value,
-        varCostPerPerson: document.getElementById('varCostPerPerson').value,
-        topCap: document.getElementById('topCap').value,
-        d0: document.getElementById('d0').value,
-        d1: document.getElementById('d1').value,
-        d2: document.getElementById('d2').value,
-        d3: document.getElementById('d3').value,
-        d4: document.getElementById('d4').value,
-        slider: document.getElementById('peopleSlider').value,
-        mode: currentMode
-      };
-      localStorage.setItem('churchManagerV31', JSON.stringify(data));
-    }
-
-    function loadData() {
-      const saved = localStorage.getItem('churchManagerV31');
-      if (!saved) return;
-
-      try {
-        const data = JSON.parse(saved);
-        document.getElementById('fixedCost').value = data.fixedCost || "";
-        document.getElementById('savings').value = data.savings || "";
-        document.getElementById('varCostPerPerson').value = data.varCostPerPerson || "";
-        document.getElementById('topCap').value = data.topCap || "";
-        ['d0','d1','d2','d3','d4'].forEach(id => {
-          document.getElementById(id).value = data[id] || "";
-        });
-        if (data.slider !== undefined && data.slider !== null) {
-          document.getElementById('peopleSlider').value = data.slider;
-          document.getElementById('simPeopleDisplay').innerText = data.slider;
+    </script>
+    <style>
+        body { background-color: #f1f5f9; }
+        .pixel-font { font-family: 'Courier New', Courier, monospace; }
+        .staff-card { transition: all 0.2s; }
+        .staff-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .stat-bar-bg { background: #e2e8f0; height: 6px; border-radius: 3px; overflow: hidden; }
+        .stat-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+        
+        /* 礼拝実行時のアニメーション用 */
+        @keyframes pulse-gold {
+            0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
         }
-        if (data.mode) currentMode = data.mode;
-      } catch (e) {
-        // 壊れたデータは無視
-      }
-    }
+        .worship-active { animation: pulse-gold 2s infinite; border-color: #eab308; }
+    </style>
+</head>
+<body class="text-slate-800 h-screen flex flex-col overflow-hidden">
 
-    window.onload = () => {
-      loadData();
-      applyMode(currentMode || 'ministry');
-      // スライダー表示の初期同期
-      document.getElementById('simPeopleDisplay').innerText = document.getElementById('peopleSlider').value;
-      calculate();
-    };
-  </script>
-</body>
-</html>
+    <!-- TOP BAR -->
+    <nav class="bg-church-900 text-white h-16 flex-none shadow-lg z-10">
+        <div class="max-w-7xl mx-auto px-4 h-full flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-gold-500 text-church-900 px-2 py-1 rounded font-black italic">KT</div>
+                <span class="font-bold text-lg">教会をつくろう！ <span class="text-xs font-normal text-slate-400">Road to Cathedral</span></span>
+            </div>
+            <div class="flex items-center space-x-6 text-sm font-mono">
+                <div class="text-center">
+                    <div class="text-[10px] text-slate-400 uppercase">Year / Month</div>
+                    <div class="font-bold text-lg leading-tight"><span id="uiYear">1</span>年 <span id="uiMonth">1</span>月</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-[10px] text-slate-400 uppercase">Funds (資金)</div>
+                    <div class="font-bold text-lg text-emerald-400 leading-tight">¥<span id="uiFunds">5,000,000</span></div>
+                </div>
+                <div class="text-center">
+                    <div class="text-[10px] text-slate-400 uppercase">Believers (信徒)</div>
+                    <div class="font-bold text-lg text-blue-300 leading-tight"><span id="uiMembers">15</span>名</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-[10px] text-slate-400 uppercase">Reputation (評判)</div>
+                    <div class="font-bold text-lg text-gold-500 leading-tight"><span id="uiReputation">Lv.1</span></div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex flex-grow overflow-hidden max-w-7xl mx-auto w-full">
+        
+        <!-- SIDEBAR MENU -->
+        <aside class="w-64 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
+            <div class="p-4 space-y-2">
+                <button onclick="app.setTab('dashboard')" class="w-full text-left px-4 py-3 rounded-lg bg-slate-100 font-bold text-church-900 hover:bg-slate-200 transition flex items-center gap-3">
+                    <i class="fa-solid fa-chart-line w-5 text-center"></i> ダッシュボード
+                </button>
+                <div class="pt-4 pb-2 text-xs font-bold text-slate-400 uppercase tracking-wider px-2">Management</div>
+                <button onclick="app.setTab('personnel')" class="w-full text-left px-4 py-3 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-church-900 transition flex items-center gap-3">
+                    <i class="fa-solid fa-user-tie w-5 text-center"></i> 人事 (スタッフ招聘)
+                </button>
+                <button onclick="app.setTab('facility')" class="w-full text-left px-4 py-3 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-church-900 transition flex items-center gap-3">
+                    <i class="fa-solid fa-church w-5 text-center"></i> 施設 (会堂建築)
+                </button>
+                <div class="pt-4 pb-2 text-xs font-bold text-slate-400 uppercase tracking-wider px-2">Action</div>
+                <button onclick="app.startWorship()" id="worshipBtn" class="w-full text-left px-4 py-4 rounded-xl bg-church-900 text-white hover:bg-church-800 transition flex items-center justify-between shadow-md group">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-fire text-gold-500 group-hover:animate-bounce"></i> 
+                        <span class="font-bold">日曜礼拝を開催</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-xs"></i>
+                </button>
+            </div>
+            
+            <div class="mt-auto p-4 border-t border-slate-200">
+                <div class="bg-slate-50 p-3 rounded text-xs text-slate-500 pixel-font h-32 overflow-y-auto" id="miniLog">
+                    > ゲーム開始...<br>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-grow bg-slate-100 p-6 overflow-y-auto" id="mainArea">
+            <!-- Content injected by JS -->
+        </main>
+
+    </div>
+
+    <!-- MODAL (Service Result) -->
+    <div id="resultModal" class="fixed inset-0 bg-church-900/90 z-50 hidden items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all scale-100">
+            <div class="bg-church-900 text-white p-6 flex justify-between items-center">
+                <h3 class="text-xl font-bold"><i class="fa-solid fa-cross text-gold-500 mr-2"></i> 礼拝レポート (Match Result)</h3>
+                <span class="text-sm font-mono text-slate-400" id="resultDate">Year 1 / Month 1</span>
+            </div>
+            <div class="p-8">
+                <div class="grid grid-cols-3 gap-6 text-center mb-8">
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <div class="text-xs text-slate-500 font-bold uppercase mb-1">出席者数</div>
+                        <div class="text-3xl font-black text-church-900" id="resAttendance">0</div>
+                        <div class="text-xs text-emerald-600 font-bold mt-1" id="resNewMembers">+0 新規</div>
+                    </div>
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <div class="text-xs text-slate-500 font-bold uppercase mb-1">献金総額</div>
+                        <div class="text-3xl font-black text-gold-600" id="resOffering">¥0</div>
+                    </div>
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <div class="text-xs text-slate-500 font-bold uppercase mb-1">会衆の満足度</div>
+                        <div class="text-3xl font-black text-blue-600" id="resSatisfaction">0%</div>
+                    </div>
+                </div>
+                
+                <div class="space-y-3 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-2">Highlights</h4>
+                    <div id="resHighlights" class="text-sm space-y-2 text-slate-700 font-mono"></div>
+                </div>
+
+                <div class="flex justify-center">
+                    <button onclick="app.closeResult()" class="bg-church-900 text-white px-8 py-3 rounded-full font-bold hover:bg-church-700 transition shadow-lg">
+                        次の週へ進む
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME DATA & CONFIG ---
+        const ROLES = {
+            pastor: { label: '主任牧師', icon: 'fa-user-tie' },
+            worship: { label: '奏楽者', icon: 'fa-music' },
+            youth: { label: '青年主事', icon: 'fa-child-reaching' },
+            admin: { label: '事務スタッフ', icon: 'fa-calculator' }
+        };
+
+        const RANKS = ['D', 'C', 'B', 'A', 'S'];
+        const RANK_COLORS = { D: 'text-slate-400', C: 'text-green-500', B: 'text-blue-500', A: 'text-pink-500', S: 'text-gold-500' };
+
+        const FACILITIES = [
+            { id: 'sound', name: '音響設備', levels: [
+                { name: '家庭用ラジカセ', cost: 0, effect: 0 },
+                { name: '簡易PAセット', cost: 100000, effect: 10 },
+                { name: '業務用ミキサー', cost: 500000, effect: 25 },
+                { name: 'コンサート音響', cost: 2000000, effect: 50 }
+            ]},
+            { id: 'building', name: '会堂規模', levels: [
+                { name: '公民館の一室', cost: 0, cap: 20, upkeep: 10000 },
+                { name: 'テナント(小)', cost: 1000000, cap: 50, upkeep: 50000 },
+                { name: 'テナント(大)', cost: 5000000, cap: 100, upkeep: 150000 },
+                { name: '単立会堂建築', cost: 30000000, cap: 300, upkeep: 300000 },
+                { name: '大聖堂', cost: 100000000, cap: 1000, upkeep: 1000000 }
+            ]}
+        ];
+
+        // --- GAME ENGINE ---
+        const game = {
+            state: {
+                year: 1, month: 1, week: 1,
+                funds: 3000000,
+                members: 10,
+                reputation: 0, // 0-1000
+                
+                // My Team
+                staff: [],
+                facilities: { sound: 0, building: 0 },
+
+                // History for charts
+                history: { funds: [], members: [] }
+            },
+
+            // ランダムなスタッフ生成 (スカウト用)
+            generateStaff() {
+                const names = ['ペテロ田中', 'ヨハネ佐藤', 'パウロ鈴木', 'マリア高橋', 'ルツ伊藤', 'ダビデ山本', 'モーセ中村'];
+                const roleKeys = Object.keys(ROLES);
+                const role = roleKeys[Math.floor(Math.random() * roleKeys.length)];
+                
+                // Rank logic (weighted)
+                const rRand = Math.random();
+                let rankIdx = 0;
+                if (rRand > 0.98) rankIdx = 4; // S
+                else if (rRand > 0.9) rankIdx = 3; // A
+                else if (rRand > 0.7) rankIdx = 2; // B
+                else if (rRand > 0.4) rankIdx = 1; // C
+                
+                const rank = RANKS[rankIdx];
+                const baseStat = (rankIdx + 1) * 15 + Math.floor(Math.random() * 10); // 15~85
+                const salary = (rankIdx + 1) * 50000 + Math.floor(Math.random() * 10000);
+
+                return {
+                    id: Date.now() + Math.random(),
+                    name: names[Math.floor(Math.random() * names.length)],
+                    role: role,
+                    rank: rank,
+                    stats: {
+                        preach: role === 'pastor' ? baseStat + 10 : baseStat - 20,
+                        care: baseStat,
+                        admin: baseStat
+                    },
+                    salary: salary,
+                    cost: salary * 3 // 契約金
+                };
+            },
+
+            calculatePower() {
+                // チーム総合力計算
+                let preachPower = 0;
+                let worshipPower = 0;
+                let carePower = 0;
+
+                this.state.staff.forEach(s => {
+                    preachPower += s.stats.preach || 0;
+                    if(s.role === 'worship') worshipPower += s.stats.care; // 奏楽はケア値依存(仮)
+                    carePower += s.stats.care;
+                });
+
+                // 施設補正
+                const soundEff = FACILITIES[0].levels[this.state.facilities.sound].effect;
+                
+                return {
+                    preach: Math.max(10, preachPower),
+                    worship: Math.max(5, worshipPower + soundEff),
+                    care: Math.max(10, carePower),
+                    capacity: FACILITIES[1].levels[this.state.facilities.building].cap
+                };
+            }
+        };
+
+        // --- UI CONTROLLER ---
+        const app = {
+            currentTab: 'dashboard',
+            candidates: [],
+
+            init() {
+                // Initial Staff
+                game.state.staff.push({
+                    id: 1, name: 'あなた (牧師)', role: 'pastor', rank: 'C',
+                    stats: { preach: 40, care: 40, admin: 30 }, salary: 150000, cost: 0
+                });
+                this.refreshCandidates();
+                this.updateHeader();
+                this.render();
+            },
+
+            refreshCandidates() {
+                this.candidates = Array.from({length: 4}, () => game.generateStaff());
+            },
+
+            updateHeader() {
+                const s = game.state;
+                document.getElementById('uiYear').innerText = s.year;
+                document.getElementById('uiMonth').innerText = s.month;
+                document.getElementById('uiFunds').innerText = s.funds.toLocaleString();
+                document.getElementById('uiMembers').innerText = s.members;
+                
+                const repLvl = Math.floor(s.reputation / 100) + 1;
+                document.getElementById('uiReputation').innerText = `Lv.${repLvl}`;
+            },
+
+            setTab(tab) {
+                this.currentTab = tab;
+                this.render();
+            },
+
+            render() {
+                const main = document.getElementById('mainArea');
+                main.innerHTML = '';
+
+                if (this.currentTab === 'dashboard') this.renderDashboard(main);
+                else if (this.currentTab === 'personnel') this.renderPersonnel(main);
+                else if (this.currentTab === 'facility') this.renderFacility(main);
+            },
+
+            // --- DASHBOARD RENDER ---
+            renderDashboard(container) {
+                const power = game.calculatePower();
+                const s = game.state;
+                const nextCost = s.staff.reduce((acc, st) => acc + st.salary, 0) + FACILITIES[1].levels[s.facilities.building].upkeep;
+
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Left: Status -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                <h2 class="font-bold text-church-900 mb-4"><i class="fa-solid fa-chart-pie mr-2"></i>教会パラメーター (Team Stats)</h2>
+                                <div class="space-y-4">
+                                    <div>
+                                        <div class="flex justify-between text-xs font-bold mb-1"><span>説教力 (Preaching)</span> <span>${power.preach}</span></div>
+                                        <div class="stat-bar-bg"><div class="stat-bar-fill bg-rose-500" style="width: ${Math.min(100, power.preach)}%"></div></div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-xs font-bold mb-1"><span>礼拝の雰囲気 (Worship)</span> <span>${power.worship}</span></div>
+                                        <div class="stat-bar-bg"><div class="stat-bar-fill bg-amber-400" style="width: ${Math.min(100, power.worship)}%"></div></div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-xs font-bold mb-1"><span>牧会ケア (Care)</span> <span>${power.care}</span></div>
+                                        <div class="stat-bar-bg"><div class="stat-bar-fill bg-emerald-500" style="width: ${Math.min(100, power.care)}%"></div></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                <h2 class="font-bold text-church-900 mb-4"><i class="fa-solid fa-users mr-2"></i>現在のスタッフ (Roster)</h2>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    ${s.staff.map(st => `
+                                        <div class="border border-slate-100 p-3 rounded-lg flex items-center justify-between">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                                                    <i class="fa-solid ${ROLES[st.role].icon}"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="text-xs font-bold text-slate-400">${ROLES[st.role].label}</div>
+                                                    <div class="font-bold text-sm">${st.name}</div>
+                                                </div>
+                                            </div>
+                                            <div class="text-xl font-black italic ${RANK_COLORS[st.rank]}">${st.rank}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Info -->
+                        <div class="space-y-6">
+                            <div class="bg-church-900 text-white p-6 rounded-xl shadow-lg">
+                                <h3 class="font-bold text-gold-500 mb-2">Next Service Info</h3>
+                                <div class="space-y-3 text-sm">
+                                    <div class="flex justify-between border-b border-church-800 pb-2">
+                                        <span class="text-slate-400">予想出席</span>
+                                        <span class="font-bold">${s.members} ～ ${Math.floor(s.members * 1.2)}名</span>
+                                    </div>
+                                    <div class="flex justify-between border-b border-church-800 pb-2">
+                                        <span class="text-slate-400">会堂定員</span>
+                                        <span class="font-bold">${power.capacity}名</span>
+                                    </div>
+                                    <div class="flex justify-between pt-2">
+                                        <span class="text-slate-400">月間維持費</span>
+                                        <span class="font-bold text-red-300">-¥${nextCost.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                                <div class="text-xs text-slate-400 font-bold uppercase mb-2">Next Goal</div>
+                                <div class="text-lg font-bold text-church-900">出席 30名を目指せ</div>
+                                <div class="w-full bg-slate-100 rounded-full h-2 mt-2">
+                                    <div class="bg-blue-500 h-2 rounded-full" style="width: ${Math.min(100, (s.members/30)*100)}%"></div>
+                                </div>
