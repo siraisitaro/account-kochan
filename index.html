@@ -2,116 +2,213 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Church Manager JS</title>
+    <title>Holy Breakers Prototype</title>
     <style>
-        /* CSS: カイロソフト風のレトロなスタイル */
-        body { background-color: #2c3e50; color: #ecf0f1; font-family: 'Courier New', Courier, monospace; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        #game-container { background-color: #34495e; border: 4px solid #f1c40f; padding: 20px; border-radius: 10px; width: 90%; max-width: 500px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .status-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; background: #2c3e50; padding: 10px; border-radius: 5px; border: 2px solid #7f8c8d; }
-        .log-window { background: #000; color: #2ecc71; height: 150px; overflow-y: auto; padding: 10px; font-size: 0.9em; border: 2px solid #7f8c8d; margin-bottom: 20px; }
-        .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        button { background: #e67e22; border: none; color: white; padding: 15px; border-radius: 5px; cursor: pointer; font-weight: bold; border-bottom: 4px solid #d35400; }
-        button:active { border-bottom: none; transform: translateY(4px); }
-        button:disabled { background: #7f8c8d; border-bottom: none; cursor: not-allowed; }
-        .theology-tag { font-size: 0.8em; color: #f1c40f; text-align: center; margin-bottom: 10px; }
+        /* ゲーム画面のスタイル設定 */
+        body { 
+            background-color: #222; /* 宇宙的な暗闇 */
+            color: #eee;
+            display: flex; 
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0;
+            font-family: sans-serif;
+        }
+        canvas { 
+            background: #333; /* ステージ背景 */
+            border: 4px solid #d4af37; /* 神聖な金の枠 */
+            box-shadow: 0 0 20px #d4af37;
+        }
+        .instructions { margin-top: 10px; text-align: center;}
     </style>
 </head>
 <body>
-
-    <h1>⛪ Pro Church Manager</h1>
-    <div class="theology-tag">Current Doctrine: Hardcore Theological Mode</div>
-
-    <div id="game-container">
-        <div class="status-bar">
-            <div>💰 資金: ¥<span id="money">0</span></div>
-            <div>👥 信徒: <span id="believers">0</span>/<span id="capacity">0</span></div>
-            <div>🎤 説教力: <span id="skill">0</span></div>
-            <div>✨ 魅力: <span id="charm">0</span></div>
-            <div>📅 第 <span id="week">1</span> 週</div>
-        </div>
-
-        <div id="log" class="log-window">教会へようこそ！開拓伝道を始めましょう。</div>
-
-        <div class="button-grid">
-            <button onclick="holdService()">礼拝を行う</button>
-            <button onclick="invest('chair')">椅子追加(¥5万)</button>
-            <button onclick="invest('audio')">音響改善(¥10万)</button>
-            <button onclick="invest('study')">神学研修(¥3万)</button>
-        </div>
+    <h1>✝️ Holy Breakers (Prototype)</h1>
+    <canvas id="gameCanvas" width="480" height="320"></canvas>
+    <div class="instructions">
+        <p>左右矢印キー(← →)でイエス様（白いパドル）を操作！<br>
+        福音のボールを打ち返し、罪のブロック（赤）を浄化せよ！</p>
     </div>
 
-    <script>
-        // JavaScript: ゲームロジック
-        let state = {
-            money: 100000,
-            believers: 5,
-            capacity: 10,
-            skill: 10,
-            charm: 10,
-            week: 1
-        };
+<script>
+    // === ゲーム設定 ===
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
-        function updateUI() {
-            document.getElementById('money').innerText = state.money.toLocaleString();
-            document.getElementById('believers').innerText = state.believers;
-            document.getElementById('capacity').innerText = state.capacity;
-            document.getElementById('skill').innerText = state.skill;
-            document.getElementById('charm').innerText = state.charm;
-            document.getElementById('week').innerText = state.week;
+    let score = 0;
+    let gameRunning = true;
+
+    // --- 1. 福音のボール設定 ---
+    let ballRadius = 8;
+    let x = canvas.width / 2;
+    let y = canvas.height - 30;
+    let dx = 3; // 横方向のスピード
+    let dy = -3; // 縦方向のスピード（マイナスで上に向かう）
+
+    // --- 2. イエス様パドル設定 ---
+    let paddleHeight = 10;
+    let paddleWidth = 75;
+    let paddleX = (canvas.width - paddleWidth) / 2;
+    let rightPressed = false;
+    let leftPressed = false;
+
+    // --- 3. 罪のブロック設定 ---
+    let brickRowCount = 5;
+    let brickColumnCount = 6;
+    let brickWidth = 60;
+    let brickHeight = 20;
+    let brickPadding = 10;
+    let brickOffsetTop = 30;
+    let brickOffsetLeft = 35;
+
+    // ブロックの配置データを作成
+    let bricks = [];
+    for(let c=0; c<brickColumnCount; c++) {
+        bricks[c] = [];
+        for(let r=0; r<brickRowCount; r++) {
+            // status: 1=存在する(罪), 0=浄化済み
+            bricks[c][r] = { x: 0, y: 0, status: 1 }; 
         }
+    }
 
-        function addLog(msg) {
-            const logWin = document.getElementById('log');
-            logWin.innerHTML += `<div>> ${msg}</div>`;
-            logWin.scrollTop = logWin.scrollHeight;
+    // === キー操作のイベントリスナー ===
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+
+    function keyDownHandler(e) {
+        if(e.key == "Right" || e.key == "ArrowRight") {
+            rightPressed = true;
         }
+        else if(e.key == "Left" || e.key == "ArrowLeft") {
+            leftPressed = true;
+        }
+    }
+    function keyUpHandler(e) {
+        if(e.key == "Right" || e.key == "ArrowRight") {
+            rightPressed = false;
+        }
+        else if(e.key == "Left" || e.key == "ArrowLeft") {
+            leftPressed = false;
+        }
+    }
 
-        function holdService() {
-            addLog(`第${state.week}週の礼拝を開始...`);
-            
-            const attendees = Math.min(state.believers, state.capacity);
-            const income = attendees * (1000 + (state.skill * 20));
-            
-            state.money += income;
-            addLog(`${attendees}人が出席。¥${income.toLocaleString()}の献金を受領。`);
-
-            if (state.believers > state.capacity) {
-                addLog(`⚠️ 会堂が狭く、${state.believers - state.capacity}人が帰りました...`);
+    // === 衝突判定ロジック ===
+    function collisionDetection() {
+        for(let c=0; c<brickColumnCount; c++) {
+            for(let r=0; r<brickRowCount; r++) {
+                let b = bricks[c][r];
+                if(b.status == 1) {
+                    // ボールがブロックの中に入ったら
+                    if(x > b.x && x < b.x+brickWidth && y > b.y && y < b.y+brickHeight) {
+                        dy = -dy; // ボールを跳ね返す
+                        b.status = 0; // ブロックを消す（浄化！）
+                        score++;
+                        // 全て壊したらクリア（今回は仮のアラート）
+                        if(score == brickRowCount * brickColumnCount) {
+                            alert("ハレルヤ！全ての罪は浄化された！(YOU WIN)");
+                            document.location.reload();
+                            gameRunning = false;
+                        }
+                    }
+                }
             }
+        }
+    }
 
-            // 新規獲得判定
-            if (Math.random() * 100 < state.charm) {
-                const newComers = Math.floor(Math.random() * 3) + 1;
-                state.believers += newComers;
-                addLog(`✨ 新規信徒が ${newComers}人 加わりました！`);
+    // === 描画関数群 ===
+    function drawBall() {
+        ctx.beginPath();
+        ctx.arc(x, y, ballRadius, 0, Math.PI*2);
+        ctx.fillStyle = "#00DDFF"; // 福音っぽい光る水色
+        ctx.fill();
+        ctx.closePath();
+    }
+    function drawPaddle() {
+        ctx.beginPath();
+        ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth, paddleHeight);
+        ctx.fillStyle = "#FFFFFF"; // イエス様の白衣の色
+        ctx.fill();
+        ctx.closePath();
+    }
+    function drawBricks() {
+        for(let c=0; c<brickColumnCount; c++) {
+            for(let r=0; r<brickRowCount; r++) {
+                if(bricks[c][r].status == 1) {
+                    let brickX = (c*(brickWidth+brickPadding))+brickOffsetLeft;
+                    let brickY = (r*(brickHeight+brickPadding))+brickOffsetTop;
+                    bricks[c][r].x = brickX;
+                    bricks[c][r].y = brickY;
+                    ctx.beginPath();
+                    ctx.rect(brickX, brickY, brickWidth, brickHeight);
+                    // ラスボス（サタン）に近づくほど赤黒くする演出
+                    const redIntensity = 150 + (r * 20); 
+                    ctx.fillStyle = `rgb(${redIntensity}, 0, 0)`; 
+                    ctx.fill();
+                    ctx.closePath();
+                }
             }
+        }
+    }
+    function drawScore() {
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#d4af37";
+        ctx.fillText("救われた魂: " + score, 8, 20);
+    }
 
-            state.week++;
-            updateUI();
+    // === メインゲームループ ===
+    function draw() {
+        if(!gameRunning) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // 画面をクリア
+        drawBricks();
+        drawBall();
+        drawPaddle();
+        drawScore();
+        collisionDetection();
+
+        // 壁との衝突判定
+        if(x + dx > canvas.width-ballRadius || x + dx < ballRadius) {
+            dx = -dx; // 左右の壁
+        }
+        if(y + dy < ballRadius) {
+            dy = -dy; // 天井
+        }
+        else if(y + dy > canvas.height-ballRadius) {
+            // イエス様パドルとの衝突判定
+            if(x > paddleX && x < paddleX + paddleWidth) {
+                // パドルのどこに当たったかで反射角を変える（ゲーム性UP）
+                let hitPoint = (x - (paddleX + paddleWidth/2)) / (paddleWidth/2);
+                dx = hitPoint * 5; // 端に当たるほど横に飛ぶ
+                dy = -dy;
+            }
+            else {
+                // 床に落ちた（ゲームオーバー）
+                // alert("信仰が足りません... (GAME OVER)");
+                // document.location.reload();
+                // gameRunning = false;
+                
+                // ※開発中は面倒なのでゲームオーバーにせず跳ね返すようにしておきます
+                dy = -dy; 
+            }
         }
 
-        function invest(type) {
-            if (type === 'chair' && state.money >= 50000) {
-                state.money -= 50000;
-                state.capacity += 5;
-                addLog("🔨 パイプ椅子を導入。収容人数UP！");
-            } else if (type === 'audio' && state.money >= 100000) {
-                state.money -= 100000;
-                state.charm += 5;
-                addLog("🎸 最新PAシステムを導入。魅力UP！");
-            } else if (type === 'study' && state.money >= 30000) {
-                state.money -= 30000;
-                state.skill += 3;
-                addLog("📖 聖書研究に没頭。説教力UP！");
-            } else {
-                addLog("❌ 資金が足りません...");
-            }
-            updateUI();
+        // パドルの移動
+        if(rightPressed && paddleX < canvas.width-paddleWidth) {
+            paddleX += 7;
+        }
+        else if(leftPressed && paddleX > 0) {
+            paddleX -= 7;
         }
 
-        // 初期表示
-        updateUI();
-    </script>
+        x += dx;
+        y += dy;
+        requestAnimationFrame(draw); // 次のフレームを要求
+    }
+
+    // ゲーム開始！
+    draw();
+</script>
 </body>
 </html>
