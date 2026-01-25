@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Console Church Manager</title>
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+</head>
+<body>
+    <h1>⛪ 教会経営シミュレーション『Pro Church』</h1>
+    <p>この画面はブラウザ上でPythonを直接実行しています。</p>
+    <hr>
+    
+    <script type="py" terminal>
+import random
+
+class ChurchGame:
+    def __init__(self):
+        self.church_name = "開拓伝道所"
+        self.money = 100000
+        self.believers = 5
+        self.week = 1
+        self.capacity = 10
+        self.charm = 10
+        self.pastor_skill = 10
+
+    def show_status(self):
+        print(f"\n=== {self.church_name} (第{self.week}週) ===")
+        print(f"💰 資金: ¥{self.money:,} | 👥 信徒: {self.believers}/{self.capacity}人")
+        print(f"✨ 魅力: {self.charm} | 🎤 説教力: {self.pastor_skill}")
+
+    def hold_service(self):
+        print(f"\n✝️ 第{self.week}週の礼拝を行います...")
+        attendees = min(self.believers, self.capacity)
+        income = attendees * (1000 + (self.pastor_skill * 10))
+        self.money += income
+        print(f"-> {attendees}人が出席し、¥{income:,}の献金がありました。")
+        
+        if random.randint(1, 100) <= self.charm:
+            new_comers = random.randint(1, 2)
+            self.believers += new_comers
+            print(f"-> ✨ 新規信徒が{new_comers}人増えました！")
+        self.week += 1
+
+    def run(self):
+        print("教会経営ゲームを開始します。")
+        while True:
+            self.show_status()
+            print("1: 礼拝を行う | 2: 終了")
+            cmd = input("選択してください > ")
+            if cmd == "1":
+                self.hold_service()
+            elif cmd == "2":
+                print("終了します。")
+                break
+
+game = ChurchGame()
+game.run()
+    </script>
+</body>
+</html>
+
