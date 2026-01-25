@@ -2,114 +2,183 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Holy Breakers Prototype</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Holy Breakers Mobile</title>
     <style>
-        /* ゲーム画面のスタイル設定 */
+        /* スマホ向けスタイル: スクロール禁止・全画面黒背景 */
         body { 
-            background-color: #222; /* 宇宙的な暗闇 */
+            background-color: #111; 
             color: #eee;
-            display: flex; 
-            flex-direction: column;
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
             margin: 0;
+            overflow: hidden; /* スクロール防止 */
+            touch-action: none; /* タッチ時のブラウザ標準動作を無効化 */
             font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
         canvas { 
-            background: #333; /* ステージ背景 */
-            border: 4px solid #d4af37; /* 神聖な金の枠 */
-            box-shadow: 0 0 20px #d4af37;
+            background: #222; 
+            display: block;
+            /* 枠線はスマホの画面を狭めるので削除し、光彩のみ残す */
+            box-shadow: 0 0 15px #d4af37; 
         }
-        .instructions { margin-top: 10px; text-align: center;}
+        #startScreen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.8);
+            z-index: 10;
+            text-align: center;
+        }
+        h1 { color: #d4af37; margin-bottom: 10px; font-size: 2rem;}
+        p { font-size: 1.2rem; line-height: 1.5;}
+        .tap-msg { color: #00DDFF; margin-top: 20px; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
     </style>
 </head>
 <body>
-    <h1>✝️ Holy Breakers (Prototype)</h1>
-    <canvas id="gameCanvas" width="480" height="320"></canvas>
-    <div class="instructions">
-        <p>左右矢印キー(← →)でイエス様（白いパドル）を操作！<br>
-        福音のボールを打ち返し、罪のブロック（赤）を浄化せよ！</p>
+
+    <!-- ゲームキャンバス -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- スタート画面（オーバーレイ） -->
+    <div id="startScreen">
+        <h1>✝️ Holy Breakers</h1>
+        <p>指でイエス様を操作して<br>福音を打ち返せ！</p>
+        <p class="tap-msg">画面をタップしてSTART</p>
     </div>
 
 <script>
-    // === ゲーム設定 ===
+    // === 初期設定 ===
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
+    const startScreen = document.getElementById("startScreen");
 
+    // スマホの画面サイズに合わせる
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    resizeCanvas(); // 初回実行
+    window.addEventListener('resize', resizeCanvas); // 画面回転時などに対応
+
+    // ゲームの状態
+    let gameRunning = false;
     let score = 0;
-    let gameRunning = true;
 
     // --- 1. 福音のボール設定 ---
-    let ballRadius = 8;
-    let x = canvas.width / 2;
-    let y = canvas.height - 30;
-    let dx = 3; // 横方向のスピード
-    let dy = -3; // 縦方向のスピード（マイナスで上に向かう）
+    let ballRadius = 10; // スマホで見やすいよう少し大きく
+    let x, y, dx, dy;
 
     // --- 2. イエス様パドル設定 ---
-    let paddleHeight = 10;
-    let paddleWidth = 75;
-    let paddleX = (canvas.width - paddleWidth) / 2;
-    let rightPressed = false;
-    let leftPressed = false;
+    let paddleHeight = 15;
+    let paddleWidth = 100; // 指で隠れないよう幅広に
+    let paddleX;
 
     // --- 3. 罪のブロック設定 ---
     let brickRowCount = 5;
-    let brickColumnCount = 6;
-    let brickWidth = 60;
-    let brickHeight = 20;
-    let brickPadding = 10;
-    let brickOffsetTop = 30;
-    let brickOffsetLeft = 35;
-
-    // ブロックの配置データを作成
+    let brickColumnCount; // 画面幅から計算
+    let brickWidth;
+    let brickHeight = 25;
+    let brickPadding = 5;
+    let brickOffsetTop = 50;
+    let brickOffsetLeft = 5;
     let bricks = [];
-    for(let c=0; c<brickColumnCount; c++) {
-        bricks[c] = [];
-        for(let r=0; r<brickRowCount; r++) {
-            // status: 1=存在する(罪), 0=浄化済み
-            bricks[c][r] = { x: 0, y: 0, status: 1 }; 
+
+    // ゲーム初期化（リセット）関数
+    function initGame() {
+        // パドル初期位置（中央）
+        paddleX = (canvas.width - paddleWidth) / 2;
+        
+        // ボール初期位置（パドルの上）
+        x = canvas.width / 2;
+        y = canvas.height - 50;
+        dx = 4 * (Math.random() > 0.5 ? 1 : -1); // ランダムな方向に発射
+        dy = -4; // 上に向かって発射
+
+        // ブロックの計算と配置
+        // 画面幅に合わせて列数を決める
+        brickColumnCount = Math.floor((canvas.width - 10) / (60 + brickPadding)); 
+        // 余ったスペースが出ないようにブロック幅を調整
+        brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumnCount - 1))) / brickColumnCount;
+        
+        bricks = [];
+        for(let c=0; c<brickColumnCount; c++) {
+            bricks[c] = [];
+            for(let r=0; r<brickRowCount; r++) {
+                bricks[c][r] = { x: 0, y: 0, status: 1 };
+            }
+        }
+        score = 0;
+    }
+
+    // === 操作イベントリスナー ===
+    
+    // タッチ操作（スマホ）
+    document.addEventListener("touchmove", touchHandler, { passive: false });
+    document.addEventListener("touchstart", touchHandler, { passive: false });
+
+    function touchHandler(e) {
+        if (!gameRunning) return;
+        e.preventDefault(); // 画面スクロール防止
+        
+        // タッチ位置のX座標を取得
+        let relativeX = e.touches[0].clientX - canvas.offsetLeft;
+        
+        if(relativeX > 0 && relativeX < canvas.width) {
+            // パドルの中心が指の位置に来るように
+            paddleX = relativeX - paddleWidth / 2;
         }
     }
 
-    // === キー操作のイベントリスナー ===
-    document.addEventListener("keydown", keyDownHandler, false);
-    document.addEventListener("keyup", keyUpHandler, false);
-
-    function keyDownHandler(e) {
-        if(e.key == "Right" || e.key == "ArrowRight") {
-            rightPressed = true;
-        }
-        else if(e.key == "Left" || e.key == "ArrowLeft") {
-            leftPressed = true;
-        }
-    }
-    function keyUpHandler(e) {
-        if(e.key == "Right" || e.key == "ArrowRight") {
-            rightPressed = false;
-        }
-        else if(e.key == "Left" || e.key == "ArrowLeft") {
-            leftPressed = false;
+    // マウス操作（PCでのデバッグ用）
+    document.addEventListener("mousemove", mouseMoveHandler, false);
+    function mouseMoveHandler(e) {
+        if (!gameRunning) return;
+        let relativeX = e.clientX - canvas.offsetLeft;
+        if(relativeX > 0 && relativeX < canvas.width) {
+            paddleX = relativeX - paddleWidth / 2;
         }
     }
 
-    // === 衝突判定ロジック ===
+    // ゲーム開始・リスタートのタップ
+    document.addEventListener("click", () => {
+        if (!gameRunning) {
+            startScreen.style.display = "none";
+            initGame();
+            gameRunning = true;
+            draw();
+        }
+    });
+    document.addEventListener("touchstart", () => {
+        if (!gameRunning) {
+            startScreen.style.display = "none";
+            initGame();
+            gameRunning = true;
+            draw();
+        }
+    });
+
+    // === 衝突判定 ===
     function collisionDetection() {
         for(let c=0; c<brickColumnCount; c++) {
             for(let r=0; r<brickRowCount; r++) {
                 let b = bricks[c][r];
                 if(b.status == 1) {
-                    // ボールがブロックの中に入ったら
                     if(x > b.x && x < b.x+brickWidth && y > b.y && y < b.y+brickHeight) {
-                        dy = -dy; // ボールを跳ね返す
-                        b.status = 0; // ブロックを消す（浄化！）
+                        dy = -dy;
+                        b.status = 0;
                         score++;
-                        // 全て壊したらクリア（今回は仮のアラート）
-                        if(score == brickRowCount * brickColumnCount) {
-                            alert("ハレルヤ！全ての罪は浄化された！(YOU WIN)");
-                            document.location.reload();
-                            gameRunning = false;
+                        // 全クリア判定
+                        let remaining = 0;
+                        bricks.forEach(col => col.forEach(brick => remaining += brick.status));
+                        if(remaining === 0) {
+                            endGame("ハレルヤ！\n全ての罪は浄化されました！");
                         }
                     }
                 }
@@ -117,21 +186,37 @@
         }
     }
 
-    // === 描画関数群 ===
+    // ゲーム終了処理
+    function endGame(message) {
+        gameRunning = false;
+        startScreen.style.display = "flex";
+        startScreen.innerHTML = `<h1>✝️ RESULT</h1><p>${message}</p><p class="tap-msg">タップして再挑戦</p>`;
+    }
+
+    // === 描画関数 ===
     function drawBall() {
         ctx.beginPath();
         ctx.arc(x, y, ballRadius, 0, Math.PI*2);
-        ctx.fillStyle = "#00DDFF"; // 福音っぽい光る水色
+        ctx.fillStyle = "#00DDFF";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#00DDFF";
         ctx.fill();
+        ctx.shadowBlur = 0; // 他の描画に影響しないようリセット
         ctx.closePath();
     }
+
     function drawPaddle() {
         ctx.beginPath();
-        ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth, paddleHeight);
-        ctx.fillStyle = "#FFFFFF"; // イエス様の白衣の色
+        // 角丸の四角形（イエス様感）
+        ctx.roundRect(paddleX, canvas.height-paddleHeight-10, paddleWidth, paddleHeight, 5);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#FFFFFF";
         ctx.fill();
+        ctx.shadowBlur = 0;
         ctx.closePath();
     }
+
     function drawBricks() {
         for(let c=0; c<brickColumnCount; c++) {
             for(let r=0; r<brickRowCount; r++) {
@@ -140,75 +225,65 @@
                     let brickY = (r*(brickHeight+brickPadding))+brickOffsetTop;
                     bricks[c][r].x = brickX;
                     bricks[c][r].y = brickY;
+                    
                     ctx.beginPath();
                     ctx.rect(brickX, brickY, brickWidth, brickHeight);
-                    // ラスボス（サタン）に近づくほど赤黒くする演出
-                    const redIntensity = 150 + (r * 20); 
-                    ctx.fillStyle = `rgb(${redIntensity}, 0, 0)`; 
+                    // 上段ほど赤黒い（罪深い）グラデーション
+                    let colorVal = 255 - (r * 40);
+                    ctx.fillStyle = `rgb(${colorVal}, 50, 50)`;
                     ctx.fill();
                     ctx.closePath();
                 }
             }
         }
     }
+
     function drawScore() {
-        ctx.font = "16px Arial";
+        ctx.font = "16px sans-serif";
         ctx.fillStyle = "#d4af37";
-        ctx.fillText("救われた魂: " + score, 8, 20);
+        ctx.fillText("Saved Souls: " + score, 15, 30);
     }
 
-    // === メインゲームループ ===
+    // === メインループ ===
     function draw() {
-        if(!gameRunning) return;
+        if (!gameRunning) return;
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height); // 画面をクリア
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
         drawBricks();
         drawBall();
         drawPaddle();
         drawScore();
         collisionDetection();
 
-        // 壁との衝突判定
+        // 壁判定
         if(x + dx > canvas.width-ballRadius || x + dx < ballRadius) {
-            dx = -dx; // 左右の壁
+            dx = -dx;
         }
         if(y + dy < ballRadius) {
-            dy = -dy; // 天井
-        }
-        else if(y + dy > canvas.height-ballRadius) {
-            // イエス様パドルとの衝突判定
+            dy = -dy;
+        } else if(y + dy > canvas.height-ballRadius-10) { // 床判定（少し余裕を持たせる）
+            // パドル判定
             if(x > paddleX && x < paddleX + paddleWidth) {
-                // パドルのどこに当たったかで反射角を変える（ゲーム性UP）
+                // 反射角の調整（端っこで打つと角度がつく）
                 let hitPoint = (x - (paddleX + paddleWidth/2)) / (paddleWidth/2);
-                dx = hitPoint * 5; // 端に当たるほど横に飛ぶ
+                dx = hitPoint * 6; 
                 dy = -dy;
+                // 加速（スリル）
+                dy *= 1.05; 
+            } else {
+                // ゲームオーバー
+                endGame("信仰が足りません...\n(GAME OVER)");
+                return;
             }
-            else {
-                // 床に落ちた（ゲームオーバー）
-                // alert("信仰が足りません... (GAME OVER)");
-                // document.location.reload();
-                // gameRunning = false;
-                
-                // ※開発中は面倒なのでゲームオーバーにせず跳ね返すようにしておきます
-                dy = -dy; 
-            }
-        }
-
-        // パドルの移動
-        if(rightPressed && paddleX < canvas.width-paddleWidth) {
-            paddleX += 7;
-        }
-        else if(leftPressed && paddleX > 0) {
-            paddleX -= 7;
         }
 
         x += dx;
         y += dy;
-        requestAnimationFrame(draw); // 次のフレームを要求
+        requestAnimationFrame(draw);
     }
 
-    // ゲーム開始！
-    draw();
 </script>
 </body>
 </html>
+
