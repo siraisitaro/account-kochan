@@ -5,47 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gospel Quest: Noah's Logic</title>
     <style>
-        /* ノア牧師仕様のデザイン（画像対応版） */
-        body { background-color: #1a1a2e; color: #e0e0e0; font-family: 'Courier New', monospace; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        #game-container { position: relative; width: 100%; max-width: 480px; height: 100%; max-height: 800px; background: #16213e; border: 2px solid #0f3460; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        /* スマホのバーを考慮した高さ設定 */
+        :root {
+            --gh: 100dvh; 
+        }
+
+        body { 
+            background-color: #1a1a2e; 
+            color: #e0e0e0; 
+            font-family: 'Courier New', monospace; 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: var(--gh); 
+            overflow: hidden; 
+            touch-action: none;
+        }
+
+        #game-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 500px; 
+            height: 100%; 
+            background: #16213e; 
+            display: flex; 
+            flex-direction: column; 
+            box-sizing: border-box;
+        }
         
         /* 1. アドベンチャーパート */
-        #story-screen { flex: 1; display: flex; flex-direction: column; padding: 20px; background: #1a1a2e; }
+        #story-screen { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 15px; 
+            box-sizing: border-box;
+            gap: 10px;
+        }
         
-        /* 画像表示エリアのスタイル修正 */
         #scene-image { 
             width: 100%; 
-            height: 240px; /* 少し縦長に */
+            height: 40%; /* 画面の4割を画像に */
             background: #000; 
-            margin-bottom: 15px; 
             border: 2px solid #533483; 
-            overflow: hidden; /* はみ出し防止 */
+            overflow: hidden; 
             position: relative;
+            flex-shrink: 0;
         }
-        /* 中の画像が良い感じに収まるようにする */
+        
         #scene-image img {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* 枠に合わせてトリミング表示 */
+            object-fit: contain; /* 画像全体が見えるように */
             display: block;
         }
-        /* 画像がない時の代替テキスト用 */
-        .placeholder-text {
-            width: 100%; height: 100%; display: flex; 
-            justify-content: center; align-items: center; 
-            color: #555; text-align: center; padding: 10px; box-sizing: border-box;
+
+        #text-box { 
+            flex: 1; 
+            border: 2px solid #e94560; 
+            border-radius: 5px; 
+            padding: 12px; 
+            background: rgba(0,0,0,0.6); 
+            font-size: 14px; 
+            line-height: 1.5; 
+            overflow-y: auto; 
+            color: #fff; 
         }
+
+        .name-tag { color: #e94560; font-weight: bold; margin-bottom: 3px; display: block; }
         
-        #text-box { flex: 1; border: 2px solid #e94560; border-radius: 5px; padding: 15px; margin-bottom: 15px; background: rgba(0,0,0,0.6); font-size: 15px; line-height: 1.7; overflow-y: auto; color: #fff; }
-        .name-tag { color: #e94560; font-weight: bold; margin-bottom: 5px; display: block; }
-        
-        #action-btn { padding: 15px; background: #0f3460; color: #00d4ff; border: 1px solid #00d4ff; font-weight: bold; font-size: 16px; cursor: pointer; transition: all 0.2s; }
-        #action-btn:active { background: #00d4ff; color: #0f3460; }
+        #action-btn { 
+            width: 100%;
+            padding: 12px; 
+            background: #0f3460; 
+            color: #00d4ff; 
+            border: 1px solid #00d4ff; 
+            font-weight: bold; 
+            font-size: 16px; 
+            cursor: pointer;
+            flex-shrink: 0;
+        }
 
         /* 2. バトルパート */
         #battle-screen { display: none; width: 100%; height: 100%; position: relative; background: #000; }
         canvas { display: block; width: 100%; height: 100%; }
-        #battle-ui { position: absolute; top: 10px; left: 10px; color: white; pointer-events: none; text-shadow: 1px 1px 0 #000; }
+        #battle-ui { position: absolute; top: 10px; left: 10px; color: white; pointer-events: none; text-shadow: 1px 1px 0 #000; z-index: 5; }
+        
         .hidden { display: none !important; }
     </style>
 </head>
@@ -53,72 +99,65 @@
 
 <div id="game-container">
     <div id="story-screen">
-        <div id="scene-image"><!-- ここに画像が入ります --></div>
+        <div id="scene-image"></div>
         <div id="text-box">
             <span class="name-tag">システム</span>
-            読み込み中...
+            Loading...
         </div>
-        <button id="action-btn" onclick="nextScript()">▼ 次へ</button>
+        <button id="action-btn" onclick="nextScript()">▼ NEXT</button>
     </div>
 
     <div id="battle-screen">
-        <div id="battle-ui">Target: <span id="target-name">Enemy</span></div>
+        <div id="battle-ui">Noah's Logic: <span id="target-name">Enemy</span></div>
         <canvas id="gameCanvas"></canvas>
     </div>
 </div>
 
 <script>
-    // --- 👓 ノア牧師の物語データ ---
-    // 画像を images/ フォルダに移動したため、パスを更新しました
+    // --- 👓 シナリオデータ（images/ フォルダを参照） ---
     const scenario = [
         { 
             id: 0, type: "story", 
             speaker: "ナレーション",
-            text: "北東北の地方都市、森岡シティ。\n岩手山の冷たい風が吹き荒れるこの街の片隅に、古びたプロテスタント教会があった。", 
+            text: "北東北の寒冷都市、森岡シティ。\n岩手山の冷たい風が吹き荒れる街の片隅に、その教会はあった。", 
             img: "images/bg_city.png" 
         },
         { 
             id: 1, type: "story", 
             speaker: "ノア牧師",
-            text: "「ここが……みなみチャーチですか。思ったより建物の老朽化が進んでいますね」\n\n眼鏡の奥の瞳が、冷静に建物の構造的欠陥と霊的な淀みを分析する。", 
+            text: "「ここが……みなみチャーチ。主の導きに感謝を。しかし、ずいぶん寂れていますね」", 
             img: "images/noah_stand.png" 
         },
         { 
             id: 2, type: "story", 
             speaker: "教会役員",
-            text: "「ノア先生！ お待ちしておりました！\n実は最近、教会の周りに『羊の皮を被った狼』が出没して、信徒を惑わせているんです！」", 
+            text: "「ノア先生！ 最近、怪しい狼の格好をした者が信徒を惑わせているのです！」", 
             img: "images/npc_officer.png" 
         },
         { 
             id: 3, type: "story", 
             speaker: "ノア牧師",
-            text: "（眼鏡をクイッと押し上げる）\n「なるほど。典型的な異端の手口ですね。\n論理的整合性のない教理で不安を煽っているのでしょう。\n\n……行きましょう。私が『聖書的ロジック』で解体します」", 
+            text: "「……羊の皮を被った狼、ですか。論理的におかしい教理は私が論破します」", 
             img: "images/noah_logic.png" 
         },
         { 
             id: 4, type: "battle", 
             speaker: "システム",
-            text: "！！論戦開始！！\n【異端の狼】が現れた！\n\nノア「その解釈は文脈を無視しています！」", 
+            text: "！！論戦開始！！\n【異端の狼】を論破せよ！", 
             enemyName: "異端の狼", difficulty: 1,
             img: "images/enemy_wolf.png"
         },
         { 
             id: 5, type: "story", 
             speaker: "ノア牧師",
-            text: "「……以上の理由により、あなたの主張は聖書的根拠を欠いています。Q.E.D.（証明終了）」", 
+            text: "「あなたの解釈には文脈が欠如しています。悔い改めなさい」", 
             img: "images/noah_logic.png" 
         },
         { 
             id: 6, type: "story", 
             speaker: "異端の狼",
-            text: "「ぐぬぬ……なんて理路整然とした反論なんだ……！」\n\n狼は悔い改め、尻尾を巻いて逃げていった。", 
+            text: "「うわあぁぁ！ ぐうの音も出ない正論だぁぁ！」", 
             img: "images/enemy_wolf.png" 
-        },
-        { 
-            id: 7, type: "story", 
-            speaker: "ナレーション",
-            text: "こうして、みなみチャーチに一時の平和が訪れた。\nだが、これは森岡シティを覆う巨大な闇の、ほんの入り口に過ぎなかった……。\n\n（つづく）", 
-            img: "images/bg_city.png" 
         }
     ];
 
@@ -129,33 +168,29 @@
     const battleScreen = document.getElementById("battle-screen");
     const targetNameSpan = document.getElementById("target-name");
 
-    // --- 画像を安全に表示する関数 ---
     function showImage(filename) {
-        if (!filename || filename.startsWith("[")) {
-            sceneImg.innerHTML = `<div class="placeholder-text">${filename || 'No Image'}</div>`;
+        if (!filename) {
+            sceneImg.innerHTML = `<div style="color:#555; padding:20px;">No Image</div>`;
         } else {
-            sceneImg.innerHTML = `<img src="${filename}" alt="Scene Image" onerror="this.parentElement.innerHTML='<div class=\\'placeholder-text\\'>画像が見つかりません:<br>${filename}</div>'">`;
+            sceneImg.innerHTML = `<img src="${filename}" alt="scene" onerror="this.src='https://via.placeholder.com/400x300?text=Image+Not+Found'">`;
         }
     }
 
-    // --- シナリオ進行 ---
     function nextScript() {
-        if (currentStep >= scenario.length) return;
-
+        if (currentStep >= scenario.length) {
+            textBox.innerHTML = "第1章 完";
+            return;
+        }
         const data = scenario[currentStep];
-
         if (data.type === "story") {
             textBox.innerHTML = `<span class="name-tag">${data.speaker}</span>${data.text.replace(/\n/g, '<br>')}`;
             showImage(data.img);
-            document.getElementById("action-btn").innerText = "▼ 次へ";
             currentStep++;
         } else if (data.type === "battle") {
-            textBox.innerHTML = `<span class="name-tag">${data.speaker}</span>${data.text.replace(/\n/g, '<br>')}`;
+            textBox.innerHTML = `<span class="name-tag">${data.speaker}</span>${data.text}`;
             showImage(data.img);
-            
             const btn = document.getElementById("action-btn");
-            btn.innerText = "⚔️ 論戦開始（ロジカル・ブレイク）";
-            
+            btn.innerText = "⚔️ LOGICAL BREAK";
             btn.onclick = () => {
                 startBattle(data.difficulty, data.enemyName);
                 btn.onclick = nextScript; 
@@ -163,12 +198,10 @@
         }
     }
 
-    // --- ✝️ ロジカル・ブロック崩しシステム ---
+    // --- 🧱 バトルシステム ---
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
-    let gameLoopId;
-    let ball, paddle, bricks;
-    let score = 0, requiredScore = 0;
+    let gameLoopId, ball, paddle, bricks, score, requiredScore;
 
     function startBattle(difficulty, enemyName) {
         storyScreen.classList.add("hidden");
@@ -181,17 +214,17 @@
     }
 
     function initGameObjects(difficulty) {
-        paddle = { x: canvas.width/2 - 50, y: canvas.height - 40, w: 100, h: 10 };
-        ball = { x: canvas.width/2, y: canvas.height - 60, dx: 4, dy: -4 - difficulty, r: 6 };
+        paddle = { x: canvas.width/2 - 50, y: canvas.height - 60, w: 100, h: 12 };
+        ball = { x: canvas.width/2, y: canvas.height - 100, dx: 4, dy: -4 - difficulty, r: 8 };
         bricks = [];
         const rows = 4 + difficulty;
         const cols = 5;
-        const padding = 8;
-        const width = (canvas.width - (padding * (cols + 1))) / cols;
+        const padding = 10;
+        const bW = (canvas.width - (padding * (cols + 1))) / cols;
         for(let c=0; c<cols; c++) {
             bricks[c] = [];
             for(let r=0; r<rows; r++) {
-                bricks[c][r] = { x: c*(width+padding)+padding, y: r*(20+padding)+50, w: width, h: 20, status: 1 };
+                bricks[c][r] = { x: c*(bW+padding)+padding, y: r*(20+padding)+60, w: bW, h: 20, status: 1 };
             }
         }
         requiredScore = rows * cols;
@@ -201,77 +234,58 @@
     function gameLoop() {
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        drawBricks();
-        drawPaddle();
-        drawBall();
-        collisionDetection();
-        
-        if(ball.x + ball.dx > canvas.width - ball.r || ball.x + ball.dx < ball.r) ball.dx = -ball.dx;
-        if(ball.y + ball.dy < ball.r) ball.dy = -ball.dy;
-        
-        if(ball.y + ball.dy > canvas.height - ball.r - 30) {
-            if(ball.x > paddle.x && ball.x < paddle.x + paddle.w) {
-                ball.dy = -ball.dy;
-                let hitPoint = (ball.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
-                ball.dx = hitPoint * 8;
-            } else if (ball.y + ball.dy > canvas.height) {
-                ball.dy = -ball.dy; 
-            }
-        }
-        ball.x += ball.dx;
-        ball.y += ball.dy;
-        canvas.ontouchmove = (e) => {
-            e.preventDefault();
-            let relativeX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
-            if(relativeX > 0 && relativeX < canvas.width) paddle.x = relativeX - paddle.w/2;
-        };
-        if(score < requiredScore) {
-            gameLoopId = requestAnimationFrame(gameLoop);
-        } else {
-            endBattle();
-        }
-    }
-
-    function drawPaddle() {
-        ctx.fillStyle = "#00d4ff";
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "#00d4ff";
-        ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
-        ctx.shadowBlur = 0;
-    }
-    function drawBall() {
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
-        ctx.fillStyle = "#fff";
-        ctx.fill();
-        ctx.closePath();
-    }
-    function drawBricks() {
         bricks.forEach(col => col.forEach(b => {
             if(b.status === 1) {
                 ctx.fillStyle = "#e94560"; 
                 ctx.fillRect(b.x, b.y, b.w, b.h);
             }
         }));
-    }
-    function collisionDetection() {
+        ctx.fillStyle = "#00d4ff";
+        ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+        ctx.fillStyle = "#fff";
+        ctx.fill();
+        ctx.closePath();
+
+        // 衝突判定
         bricks.forEach(col => col.forEach(b => {
-            if(b.status === 1) {
-                if(ball.x > b.x && ball.x < b.x+b.w && ball.y > b.y && ball.y < b.y+b.h) {
-                    ball.dy = -ball.dy;
-                    b.status = 0;
-                    score++;
-                }
+            if(b.status === 1 && ball.x > b.x && ball.x < b.x+b.w && ball.y > b.y && ball.y < b.y+b.h) {
+                ball.dy = -ball.dy; b.status = 0; score++;
             }
         }));
+
+        if(ball.x + ball.dx > canvas.width - ball.r || ball.x + ball.dx < ball.r) ball.dx = -ball.dx;
+        if(ball.y + ball.dy < ball.r) ball.dy = -ball.dy;
+        if(ball.y + ball.dy > paddle.y - ball.r && ball.x > paddle.x && ball.x < paddle.x + paddle.w) {
+            ball.dy = -Math.abs(ball.dy);
+            ball.dx = ((ball.x - (paddle.x + paddle.w/2)) / (paddle.w/2)) * 6;
+        } else if (ball.y > canvas.height) {
+            ball.y = paddle.y - 20; ball.dy = -4; // 落下救済
+        }
+
+        ball.x += ball.dx; ball.y += ball.dy;
+
+        canvas.ontouchmove = (e) => {
+            e.preventDefault();
+            let rect = canvas.getBoundingClientRect();
+            let rx = e.touches[0].clientX - rect.left;
+            paddle.x = rx - paddle.w/2;
+        };
+
+        if(score < requiredScore) gameLoopId = requestAnimationFrame(gameLoop);
+        else endBattle();
     }
+
     function endBattle() {
         cancelAnimationFrame(gameLoopId);
         battleScreen.style.display = "none";
         storyScreen.classList.remove("hidden");
         currentStep++; 
+        document.getElementById("action-btn").innerText = "▼ NEXT";
         nextScript();
     }
+
     nextScript();
 </script>
 </body>
