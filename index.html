@@ -4,12 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gospel Quest: Noah's Logic</title>
-    <style>
-        /* スマホのバーを考慮した高さ設定 */
-        :root {
-            --gh: 100dvh; 
-        }
 
+    <!-- === ここからアイコン設定 === -->
+    <!-- ブラウザのタブ用 -->
+    <link rel="icon" href="images/icon.png" type="image/png">
+    <!-- iPhone/iPadホーム画面用 -->
+    <link rel="apple-touch-icon" href="images/icon.png">
+    <!-- Android/Chrome用アプリ化設定 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ノアの論理">
+    <!-- === ここまでアイコン設定 === -->
+
+    <style>
+        :root { --gh: 100dvh; }
         body { 
             background-color: #1a1a2e; 
             color: #e0e0e0; 
@@ -22,7 +30,6 @@
             overflow: hidden; 
             touch-action: none;
         }
-
         #game-container { 
             position: relative; 
             width: 100%; 
@@ -33,65 +40,15 @@
             flex-direction: column; 
             box-sizing: border-box;
         }
-        
-        /* 1. アドベンチャーパート */
-        #story-screen { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            padding: 15px; 
-            box-sizing: border-box;
-            gap: 10px;
-        }
-        
-        #scene-image { 
-            width: 100%; 
-            height: 40%; /* 画面の4割を画像に */
-            background: #000; 
-            border: 2px solid #533483; 
-            overflow: hidden; 
-            position: relative;
-            flex-shrink: 0;
-        }
-        
-        #scene-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* 画像全体が見えるように */
-            display: block;
-        }
-
-        #text-box { 
-            flex: 1; 
-            border: 2px solid #e94560; 
-            border-radius: 5px; 
-            padding: 12px; 
-            background: rgba(0,0,0,0.6); 
-            font-size: 14px; 
-            line-height: 1.5; 
-            overflow-y: auto; 
-            color: #fff; 
-        }
-
+        #story-screen { flex: 1; display: flex; flex-direction: column; padding: 15px; box-sizing: border-box; gap: 10px; }
+        #scene-image { width: 100%; height: 40%; background: #000; border: 2px solid #533483; overflow: hidden; position: relative; flex-shrink: 0; }
+        #scene-image img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        #text-box { flex: 1; border: 2px solid #e94560; border-radius: 5px; padding: 12px; background: rgba(0,0,0,0.6); font-size: 14px; line-height: 1.5; overflow-y: auto; color: #fff; }
         .name-tag { color: #e94560; font-weight: bold; margin-bottom: 3px; display: block; }
-        
-        #action-btn { 
-            width: 100%;
-            padding: 12px; 
-            background: #0f3460; 
-            color: #00d4ff; 
-            border: 1px solid #00d4ff; 
-            font-weight: bold; 
-            font-size: 16px; 
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        /* 2. バトルパート */
+        #action-btn { width: 100%; padding: 12px; background: #0f3460; color: #00d4ff; border: 1px solid #00d4ff; font-weight: bold; font-size: 16px; cursor: pointer; flex-shrink: 0; }
         #battle-screen { display: none; width: 100%; height: 100%; position: relative; background: #000; }
         canvas { display: block; width: 100%; height: 100%; }
         #battle-ui { position: absolute; top: 10px; left: 10px; color: white; pointer-events: none; text-shadow: 1px 1px 0 #000; z-index: 5; }
-        
         .hidden { display: none !important; }
     </style>
 </head>
@@ -101,12 +58,11 @@
     <div id="story-screen">
         <div id="scene-image"></div>
         <div id="text-box">
-            <span class="name-tag">システム</span>
+            <span class="name-tag">System</span>
             Loading...
         </div>
         <button id="action-btn" onclick="nextScript()">▼ NEXT</button>
     </div>
-
     <div id="battle-screen">
         <div id="battle-ui">Noah's Logic: <span id="target-name">Enemy</span></div>
         <canvas id="gameCanvas"></canvas>
@@ -114,51 +70,14 @@
 </div>
 
 <script>
-    // --- 👓 シナリオデータ（images/ フォルダを参照） ---
     const scenario = [
-        { 
-            id: 0, type: "story", 
-            speaker: "ナレーション",
-            text: "北東北の寒冷都市、森岡シティ。\n岩手山の冷たい風が吹き荒れる街の片隅に、その教会はあった。", 
-            img: "images/bg_city.png" 
-        },
-        { 
-            id: 1, type: "story", 
-            speaker: "ノア牧師",
-            text: "「ここが……みなみチャーチ。主の導きに感謝を。しかし、ずいぶん寂れていますね」", 
-            img: "images/noah_stand.png" 
-        },
-        { 
-            id: 2, type: "story", 
-            speaker: "教会役員",
-            text: "「ノア先生！ 最近、怪しい狼の格好をした者が信徒を惑わせているのです！」", 
-            img: "images/npc_officer.png" 
-        },
-        { 
-            id: 3, type: "story", 
-            speaker: "ノア牧師",
-            text: "「……羊の皮を被った狼、ですか。論理的におかしい教理は私が論破します」", 
-            img: "images/noah_logic.png" 
-        },
-        { 
-            id: 4, type: "battle", 
-            speaker: "システム",
-            text: "！！論戦開始！！\n【異端の狼】を論破せよ！", 
-            enemyName: "異端の狼", difficulty: 1,
-            img: "images/enemy_wolf.png"
-        },
-        { 
-            id: 5, type: "story", 
-            speaker: "ノア牧師",
-            text: "「あなたの解釈には文脈が欠如しています。悔い改めなさい」", 
-            img: "images/noah_logic.png" 
-        },
-        { 
-            id: 6, type: "story", 
-            speaker: "異端の狼",
-            text: "「うわあぁぁ！ ぐうの音も出ない正論だぁぁ！」", 
-            img: "images/enemy_wolf.png" 
-        }
+        { id: 0, type: "story", speaker: "ナレーション", text: "北東北の寒冷都市、森岡シティ。\n岩手山の冷たい風が吹き荒れる街の片隅に、その教会はあった。", img: "images/bg_city.png" },
+        { id: 1, type: "story", speaker: "ノア牧師", text: "「ここが……みなみチャーチ。主の導きに感謝を。しかし、ずいぶん寂れていますね」", img: "images/noah_stand.png" },
+        { id: 2, type: "story", speaker: "教会役員", text: "「ノア先生！ 最近、怪しい狼の格好をした者が信徒を惑わせているのです！」", img: "images/npc_officer.png" },
+        { id: 3, type: "story", speaker: "ノア牧師", text: "「……羊の皮を被った狼、ですか。論理的におかしい教理は私が論破します」", img: "images/noah_logic.png" },
+        { id: 4, type: "battle", speaker: "System", text: "！！論戦開始！！\n【異端の狼】を論破せよ！", enemyName: "異端の狼", difficulty: 1, img: "images/enemy_wolf.png" },
+        { id: 5, type: "story", speaker: "ノア牧師", text: "「あなたの解釈には文脈が欠如しています。悔い改めなさい」", img: "images/noah_logic.png" },
+        { id: 6, type: "story", speaker: "異端の狼", text: "「うわあぁぁ！ ぐうの音も出ない正論だぁぁ！」", img: "images/enemy_wolf.png" }
     ];
 
     let currentStep = 0;
@@ -198,7 +117,6 @@
         }
     }
 
-    // --- 🧱 バトルシステム ---
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     let gameLoopId, ball, paddle, bricks, score, requiredScore;
@@ -235,10 +153,7 @@
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         bricks.forEach(col => col.forEach(b => {
-            if(b.status === 1) {
-                ctx.fillStyle = "#e94560"; 
-                ctx.fillRect(b.x, b.y, b.w, b.h);
-            }
+            if(b.status === 1) { ctx.fillStyle = "#e94560"; ctx.fillRect(b.x, b.y, b.w, b.h); }
         }));
         ctx.fillStyle = "#00d4ff";
         ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
@@ -248,7 +163,6 @@
         ctx.fill();
         ctx.closePath();
 
-        // 衝突判定
         bricks.forEach(col => col.forEach(b => {
             if(b.status === 1 && ball.x > b.x && ball.x < b.x+b.w && ball.y > b.y && ball.y < b.y+b.h) {
                 ball.dy = -ball.dy; b.status = 0; score++;
@@ -261,7 +175,7 @@
             ball.dy = -Math.abs(ball.dy);
             ball.dx = ((ball.x - (paddle.x + paddle.w/2)) / (paddle.w/2)) * 6;
         } else if (ball.y > canvas.height) {
-            ball.y = paddle.y - 20; ball.dy = -4; // 落下救済
+            ball.y = paddle.y - 20; ball.dy = -4; 
         }
 
         ball.x += ball.dx; ball.y += ball.dy;
