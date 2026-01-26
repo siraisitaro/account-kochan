@@ -3,286 +3,281 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Holy Breakers Mobile</title>
+    <title>Gospel Quest: Noah's Logic</title>
     <style>
-        /* スマホ向けスタイル: スクロール禁止・全画面黒背景 */
-        body { 
-            background-color: #111; 
-            color: #eee;
-            margin: 0;
-            overflow: hidden; /* スクロール防止 */
-            touch-action: none; /* タッチ時のブラウザ標準動作を無効化 */
-            font-family: sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+        /* ノア牧師仕様のデザイン（画像対応版） */
+        body { background-color: #1a1a2e; color: #e0e0e0; font-family: 'Courier New', monospace; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #game-container { position: relative; width: 100%; max-width: 480px; height: 100%; max-height: 800px; background: #16213e; border: 2px solid #0f3460; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        
+        /* 1. アドベンチャーパート */
+        #story-screen { flex: 1; display: flex; flex-direction: column; padding: 20px; background: #1a1a2e; }
+        
+        /* 画像表示エリアのスタイル修正 */
+        #scene-image { 
+            width: 100%; 
+            height: 240px; /* 少し縦長に */
+            background: #000; 
+            margin-bottom: 15px; 
+            border: 2px solid #533483; 
+            overflow: hidden; /* はみ出し防止 */
+            position: relative;
         }
-        canvas { 
-            background: #222; 
+        /* 中の画像が良い感じに収まるようにする */
+        #scene-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* 枠に合わせてトリミング表示 */
             display: block;
-            /* 枠線はスマホの画面を狭めるので削除し、光彩のみ残す */
-            box-shadow: 0 0 15px #d4af37; 
         }
-        #startScreen {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0,0,0,0.8);
-            z-index: 10;
-            text-align: center;
+        /* 画像がない時の代替テキスト用 */
+        .placeholder-text {
+            width: 100%; height: 100%; display: flex; 
+            justify-content: center; align-items: center; 
+            color: #555; text-align: center; padding: 10px; box-sizing: border-box;
         }
-        h1 { color: #d4af37; margin-bottom: 10px; font-size: 2rem;}
-        p { font-size: 1.2rem; line-height: 1.5;}
-        .tap-msg { color: #00DDFF; margin-top: 20px; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
+        
+        #text-box { flex: 1; border: 2px solid #e94560; border-radius: 5px; padding: 15px; margin-bottom: 15px; background: rgba(0,0,0,0.6); font-size: 15px; line-height: 1.7; overflow-y: auto; color: #fff; }
+        .name-tag { color: #e94560; font-weight: bold; margin-bottom: 5px; display: block; }
+        
+        #action-btn { padding: 15px; background: #0f3460; color: #00d4ff; border: 1px solid #00d4ff; font-weight: bold; font-size: 16px; cursor: pointer; transition: all 0.2s; }
+        #action-btn:active { background: #00d4ff; color: #0f3460; }
+
+        /* 2. バトルパート */
+        #battle-screen { display: none; width: 100%; height: 100%; position: relative; background: #000; }
+        canvas { display: block; width: 100%; height: 100%; }
+        #battle-ui { position: absolute; top: 10px; left: 10px; color: white; pointer-events: none; text-shadow: 1px 1px 0 #000; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- ゲームキャンバス -->
-    <canvas id="gameCanvas"></canvas>
-
-    <!-- スタート画面（オーバーレイ） -->
-    <div id="startScreen">
-        <h1>✝️ Holy Breakers</h1>
-        <p>指でイエス様を操作して<br>福音を打ち返せ！</p>
-        <p class="tap-msg">画面をタップしてSTART</p>
+<div id="game-container">
+    <div id="story-screen">
+        <div id="scene-image"><!-- ここに画像が入ります --></div>
+        <div id="text-box">
+            <span class="name-tag">システム</span>
+            読み込み中...
+        </div>
+        <button id="action-btn" onclick="nextScript()">▼ 次へ</button>
     </div>
 
+    <div id="battle-screen">
+        <div id="battle-ui">Target: <span id="target-name">Enemy</span></div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+</div>
+
 <script>
-    // === 初期設定 ===
+    // --- 👓 ノア牧師の物語データ ---
+    // 【重要】画像のファイル名(img)は、GitHubにアップロードしたものに合わせて書き換えてください
+    const scenario = [
+        { 
+            id: 0, type: "story", 
+            speaker: "ナレーション",
+            text: "北東北の地方都市、森岡シティ。\n岩手山の冷たい風が吹き荒れるこの街の片隅に、古びたプロテスタント教会があった。", 
+            img: "bg_city.png" 
+        },
+        { 
+            id: 1, type: "story", 
+            speaker: "ノア牧師",
+            text: "「ここが……みなみチャーチですか。思ったより建物の老朽化が進んでいますね」\n\n眼鏡の奥の瞳が、冷静に建物の構造的欠陥と霊的な淀みを分析する。", 
+            img: "noah_stand.png" 
+        },
+        { 
+            id: 2, type: "story", 
+            speaker: "教会役員",
+            text: "「ノア先生！ お待ちしておりました！\n実は最近、教会の周りに『羊の皮を被った狼』が出没して、信徒を惑わせているんです！」", 
+            img: "npc_officer.png" 
+        },
+        { 
+            id: 3, type: "story", 
+            speaker: "ノア牧師",
+            text: "（眼鏡をクイッと押し上げる）\n「なるほど。典型的な異端の手口ですね。\n論理的整合性のない教理で不安を煽っているのでしょう。\n\n……行きましょう。私が『聖書的ロジック』で解体します」", 
+            img: "noah_logic.png" 
+        },
+        { 
+            id: 4, type: "battle", 
+            speaker: "システム",
+            text: "！！論戦開始！！\n【異端の狼】が現れた！\n\nノア「その解釈は文脈を無視しています！」", 
+            enemyName: "異端の狼", difficulty: 1,
+            // バトル前の画像も指定可能
+            img: "enemy_wolf.png"
+        },
+        { 
+            id: 5, type: "story", 
+            speaker: "ノア牧師",
+            text: "「……以上の理由により、あなたの主張は聖書的根拠を欠いています。Q.E.D.（証明終了）」", 
+            img: "noah_logic.png" 
+        },
+        { 
+            id: 6, type: "story", 
+            speaker: "異端の狼",
+            text: "「ぐぬぬ……なんて理路整然とした反論なんだ……！」\n\n狼は悔い改め、尻尾を巻いて逃げていった。", 
+            img: "enemy_wolf.png" 
+        },
+        { 
+            id: 7, type: "story", 
+            speaker: "ナレーション",
+            text: "こうして、みなみチャーチに一時の平和が訪れた。\nだが、これは森岡シティを覆う巨大な闇の、ほんの入り口に過ぎなかった……。\n\n（つづく）", 
+            img: "bg_city.png" 
+        }
+    ];
+
+    let currentStep = 0;
+    const textBox = document.getElementById("text-box");
+    const sceneImg = document.getElementById("scene-image");
+    const storyScreen = document.getElementById("story-screen");
+    const battleScreen = document.getElementById("battle-screen");
+    const targetNameSpan = document.getElementById("target-name");
+
+    // --- 画像を安全に表示する関数 ---
+    function showImage(filename) {
+        // 画像ファイル名が指定されていない、または空の場合はプレースホルダーを表示
+        if (!filename || filename.startsWith("[")) {
+            sceneImg.innerHTML = `<div class="placeholder-text">${filename || 'No Image'}</div>`;
+        } else {
+            // 画像タグを生成して埋め込む
+            sceneImg.innerHTML = `<img src="${filename}" alt="Scene Image" onerror="this.parentElement.innerHTML='<div class=\\'placeholder-text\\'>画像が見つかりません:<br>${filename}</div>'">`;
+        }
+    }
+
+    // --- シナリオ進行 ---
+    function nextScript() {
+        if (currentStep >= scenario.length) return;
+
+        const data = scenario[currentStep];
+
+        if (data.type === "story") {
+            // ストーリーパート表示
+            textBox.innerHTML = `<span class="name-tag">${data.speaker}</span>${data.text.replace(/\n/g, '<br>')}`;
+            showImage(data.img); // 画像表示関数を呼び出す
+            document.getElementById("action-btn").innerText = "▼ 次へ";
+            currentStep++;
+        } else if (data.type === "battle") {
+            // バトル前表示
+            textBox.innerHTML = `<span class="name-tag">${data.speaker}</span>${data.text.replace(/\n/g, '<br>')}`;
+            showImage(data.img);
+            
+            const btn = document.getElementById("action-btn");
+            btn.innerText = "⚔️ 論戦開始（ロジカル・ブレイク）";
+            
+            btn.onclick = () => {
+                startBattle(data.difficulty, data.enemyName);
+                btn.onclick = nextScript; 
+            };
+        }
+    }
+
+    // --- ✝️ ロジカル・ブロック崩しシステム ---
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
-    const startScreen = document.getElementById("startScreen");
+    let gameLoopId;
+    let ball, paddle, bricks;
+    let score = 0, requiredScore = 0;
 
-    // スマホの画面サイズに合わせる
-    function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    function startBattle(difficulty, enemyName) {
+        storyScreen.classList.add("hidden");
+        battleScreen.style.display = "block";
+        targetNameSpan.innerText = enemyName;
+        canvas.width = battleScreen.clientWidth;
+        canvas.height = battleScreen.clientHeight;
+        initGameObjects(difficulty);
+        gameLoop();
     }
-    resizeCanvas(); // 初回実行
-    window.addEventListener('resize', resizeCanvas); // 画面回転時などに対応
 
-    // ゲームの状態
-    let gameRunning = false;
-    let score = 0;
-
-    // --- 1. 福音のボール設定 ---
-    let ballRadius = 10; // スマホで見やすいよう少し大きく
-    let x, y, dx, dy;
-
-    // --- 2. イエス様パドル設定 ---
-    let paddleHeight = 15;
-    let paddleWidth = 100; // 指で隠れないよう幅広に
-    let paddleX;
-
-    // --- 3. 罪のブロック設定 ---
-    let brickRowCount = 5;
-    let brickColumnCount; // 画面幅から計算
-    let brickWidth;
-    let brickHeight = 25;
-    let brickPadding = 5;
-    let brickOffsetTop = 50;
-    let brickOffsetLeft = 5;
-    let bricks = [];
-
-    // ゲーム初期化（リセット）関数
-    function initGame() {
-        // パドル初期位置（中央）
-        paddleX = (canvas.width - paddleWidth) / 2;
-        
-        // ボール初期位置（パドルの上）
-        x = canvas.width / 2;
-        y = canvas.height - 50;
-        dx = 4 * (Math.random() > 0.5 ? 1 : -1); // ランダムな方向に発射
-        dy = -4; // 上に向かって発射
-
-        // ブロックの計算と配置
-        // 画面幅に合わせて列数を決める
-        brickColumnCount = Math.floor((canvas.width - 10) / (60 + brickPadding)); 
-        // 余ったスペースが出ないようにブロック幅を調整
-        brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumnCount - 1))) / brickColumnCount;
-        
+    function initGameObjects(difficulty) {
+        paddle = { x: canvas.width/2 - 50, y: canvas.height - 40, w: 100, h: 10 };
+        ball = { x: canvas.width/2, y: canvas.height - 60, dx: 4, dy: -4 - difficulty, r: 6 };
         bricks = [];
-        for(let c=0; c<brickColumnCount; c++) {
+        const rows = 4 + difficulty;
+        const cols = 5;
+        const padding = 8;
+        const width = (canvas.width - (padding * (cols + 1))) / cols;
+        for(let c=0; c<cols; c++) {
             bricks[c] = [];
-            for(let r=0; r<brickRowCount; r++) {
-                bricks[c][r] = { x: 0, y: 0, status: 1 };
+            for(let r=0; r<rows; r++) {
+                bricks[c][r] = { x: c*(width+padding)+padding, y: r*(20+padding)+50, w: width, h: 20, status: 1 };
             }
         }
+        requiredScore = rows * cols;
         score = 0;
     }
 
-    // === 操作イベントリスナー ===
-    
-    // タッチ操作（スマホ）
-    document.addEventListener("touchmove", touchHandler, { passive: false });
-    document.addEventListener("touchstart", touchHandler, { passive: false });
-
-    function touchHandler(e) {
-        if (!gameRunning) return;
-        e.preventDefault(); // 画面スクロール防止
+    function gameLoop() {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawBricks();
+        drawPaddle();
+        drawBall();
+        collisionDetection();
         
-        // タッチ位置のX座標を取得
-        let relativeX = e.touches[0].clientX - canvas.offsetLeft;
+        if(ball.x + ball.dx > canvas.width - ball.r || ball.x + ball.dx < ball.r) ball.dx = -ball.dx;
+        if(ball.y + ball.dy < ball.r) ball.dy = -ball.dy;
         
-        if(relativeX > 0 && relativeX < canvas.width) {
-            // パドルの中心が指の位置に来るように
-            paddleX = relativeX - paddleWidth / 2;
-        }
-    }
-
-    // マウス操作（PCでのデバッグ用）
-    document.addEventListener("mousemove", mouseMoveHandler, false);
-    function mouseMoveHandler(e) {
-        if (!gameRunning) return;
-        let relativeX = e.clientX - canvas.offsetLeft;
-        if(relativeX > 0 && relativeX < canvas.width) {
-            paddleX = relativeX - paddleWidth / 2;
-        }
-    }
-
-    // ゲーム開始・リスタートのタップ
-    document.addEventListener("click", () => {
-        if (!gameRunning) {
-            startScreen.style.display = "none";
-            initGame();
-            gameRunning = true;
-            draw();
-        }
-    });
-    document.addEventListener("touchstart", () => {
-        if (!gameRunning) {
-            startScreen.style.display = "none";
-            initGame();
-            gameRunning = true;
-            draw();
-        }
-    });
-
-    // === 衝突判定 ===
-    function collisionDetection() {
-        for(let c=0; c<brickColumnCount; c++) {
-            for(let r=0; r<brickRowCount; r++) {
-                let b = bricks[c][r];
-                if(b.status == 1) {
-                    if(x > b.x && x < b.x+brickWidth && y > b.y && y < b.y+brickHeight) {
-                        dy = -dy;
-                        b.status = 0;
-                        score++;
-                        // 全クリア判定
-                        let remaining = 0;
-                        bricks.forEach(col => col.forEach(brick => remaining += brick.status));
-                        if(remaining === 0) {
-                            endGame("ハレルヤ！\n全ての罪は浄化されました！");
-                        }
-                    }
-                }
+        if(ball.y + ball.dy > canvas.height - ball.r - 30) {
+            if(ball.x > paddle.x && ball.x < paddle.x + paddle.w) {
+                ball.dy = -ball.dy;
+                let hitPoint = (ball.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
+                ball.dx = hitPoint * 8;
+            } else if (ball.y + ball.dy > canvas.height) {
+                ball.dy = -ball.dy; 
             }
         }
-    }
-
-    // ゲーム終了処理
-    function endGame(message) {
-        gameRunning = false;
-        startScreen.style.display = "flex";
-        startScreen.innerHTML = `<h1>✝️ RESULT</h1><p>${message}</p><p class="tap-msg">タップして再挑戦</p>`;
-    }
-
-    // === 描画関数 ===
-    function drawBall() {
-        ctx.beginPath();
-        ctx.arc(x, y, ballRadius, 0, Math.PI*2);
-        ctx.fillStyle = "#00DDFF";
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "#00DDFF";
-        ctx.fill();
-        ctx.shadowBlur = 0; // 他の描画に影響しないようリセット
-        ctx.closePath();
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+        canvas.ontouchmove = (e) => {
+            e.preventDefault();
+            let relativeX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+            if(relativeX > 0 && relativeX < canvas.width) paddle.x = relativeX - paddle.w/2;
+        };
+        if(score < requiredScore) {
+            gameLoopId = requestAnimationFrame(gameLoop);
+        } else {
+            endBattle();
+        }
     }
 
     function drawPaddle() {
-        ctx.beginPath();
-        // 角丸の四角形（イエス様感）
-        ctx.roundRect(paddleX, canvas.height-paddleHeight-10, paddleWidth, paddleHeight, 5);
-        ctx.fillStyle = "#FFFFFF";
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = "#FFFFFF";
-        ctx.fill();
+        ctx.fillStyle = "#00d4ff";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#00d4ff";
+        ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
         ctx.shadowBlur = 0;
+    }
+    function drawBall() {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+        ctx.fillStyle = "#fff";
+        ctx.fill();
         ctx.closePath();
     }
-
     function drawBricks() {
-        for(let c=0; c<brickColumnCount; c++) {
-            for(let r=0; r<brickRowCount; r++) {
-                if(bricks[c][r].status == 1) {
-                    let brickX = (c*(brickWidth+brickPadding))+brickOffsetLeft;
-                    let brickY = (r*(brickHeight+brickPadding))+brickOffsetTop;
-                    bricks[c][r].x = brickX;
-                    bricks[c][r].y = brickY;
-                    
-                    ctx.beginPath();
-                    ctx.rect(brickX, brickY, brickWidth, brickHeight);
-                    // 上段ほど赤黒い（罪深い）グラデーション
-                    let colorVal = 255 - (r * 40);
-                    ctx.fillStyle = `rgb(${colorVal}, 50, 50)`;
-                    ctx.fill();
-                    ctx.closePath();
+        bricks.forEach(col => col.forEach(b => {
+            if(b.status === 1) {
+                ctx.fillStyle = "#e94560"; 
+                ctx.fillRect(b.x, b.y, b.w, b.h);
+            }
+        }));
+    }
+    function collisionDetection() {
+        bricks.forEach(col => col.forEach(b => {
+            if(b.status === 1) {
+                if(ball.x > b.x && ball.x < b.x+b.w && ball.y > b.y && ball.y < b.y+b.h) {
+                    ball.dy = -ball.dy;
+                    b.status = 0;
+                    score++;
                 }
             }
-        }
+        }));
     }
-
-    function drawScore() {
-        ctx.font = "16px sans-serif";
-        ctx.fillStyle = "#d4af37";
-        ctx.fillText("Saved Souls: " + score, 15, 30);
+    function endBattle() {
+        cancelAnimationFrame(gameLoopId);
+        battleScreen.style.display = "none";
+        storyScreen.classList.remove("hidden");
+        currentStep++; 
+        nextScript();
     }
-
-    // === メインループ ===
-    function draw() {
-        if (!gameRunning) return;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        drawBricks();
-        drawBall();
-        drawPaddle();
-        drawScore();
-        collisionDetection();
-
-        // 壁判定
-        if(x + dx > canvas.width-ballRadius || x + dx < ballRadius) {
-            dx = -dx;
-        }
-        if(y + dy < ballRadius) {
-            dy = -dy;
-        } else if(y + dy > canvas.height-ballRadius-10) { // 床判定（少し余裕を持たせる）
-            // パドル判定
-            if(x > paddleX && x < paddleX + paddleWidth) {
-                // 反射角の調整（端っこで打つと角度がつく）
-                let hitPoint = (x - (paddleX + paddleWidth/2)) / (paddleWidth/2);
-                dx = hitPoint * 6; 
-                dy = -dy;
-                // 加速（スリル）
-                dy *= 1.05; 
-            } else {
-                // ゲームオーバー
-                endGame("信仰が足りません...\n(GAME OVER)");
-                return;
-            }
-        }
-
-        x += dx;
-        y += dy;
-        requestAnimationFrame(draw);
-    }
-
+    nextScript();
 </script>
 </body>
 </html>
