@@ -69,57 +69,56 @@
 
 <script>
     // --- 👓 ノア牧師の物語データ ---
-    // 【重要】画像のファイル名(img)は、GitHubにアップロードしたものに合わせて書き換えてください
+    // 画像を images/ フォルダに移動したため、パスを更新しました
     const scenario = [
         { 
             id: 0, type: "story", 
             speaker: "ナレーション",
             text: "北東北の地方都市、森岡シティ。\n岩手山の冷たい風が吹き荒れるこの街の片隅に、古びたプロテスタント教会があった。", 
-            img: "bg_city.png" 
+            img: "images/bg_city.png" 
         },
         { 
             id: 1, type: "story", 
             speaker: "ノア牧師",
             text: "「ここが……みなみチャーチですか。思ったより建物の老朽化が進んでいますね」\n\n眼鏡の奥の瞳が、冷静に建物の構造的欠陥と霊的な淀みを分析する。", 
-            img: "noah_stand.png" 
+            img: "images/noah_stand.png" 
         },
         { 
             id: 2, type: "story", 
             speaker: "教会役員",
             text: "「ノア先生！ お待ちしておりました！\n実は最近、教会の周りに『羊の皮を被った狼』が出没して、信徒を惑わせているんです！」", 
-            img: "npc_officer.png" 
+            img: "images/npc_officer.png" 
         },
         { 
             id: 3, type: "story", 
             speaker: "ノア牧師",
             text: "（眼鏡をクイッと押し上げる）\n「なるほど。典型的な異端の手口ですね。\n論理的整合性のない教理で不安を煽っているのでしょう。\n\n……行きましょう。私が『聖書的ロジック』で解体します」", 
-            img: "noah_logic.png" 
+            img: "images/noah_logic.png" 
         },
         { 
             id: 4, type: "battle", 
             speaker: "システム",
             text: "！！論戦開始！！\n【異端の狼】が現れた！\n\nノア「その解釈は文脈を無視しています！」", 
             enemyName: "異端の狼", difficulty: 1,
-            // バトル前の画像も指定可能
-            img: "enemy_wolf.png"
+            img: "images/enemy_wolf.png"
         },
         { 
             id: 5, type: "story", 
             speaker: "ノア牧師",
             text: "「……以上の理由により、あなたの主張は聖書的根拠を欠いています。Q.E.D.（証明終了）」", 
-            img: "noah_logic.png" 
+            img: "images/noah_logic.png" 
         },
         { 
             id: 6, type: "story", 
             speaker: "異端の狼",
             text: "「ぐぬぬ……なんて理路整然とした反論なんだ……！」\n\n狼は悔い改め、尻尾を巻いて逃げていった。", 
-            img: "enemy_wolf.png" 
+            img: "images/enemy_wolf.png" 
         },
         { 
             id: 7, type: "story", 
             speaker: "ナレーション",
             text: "こうして、みなみチャーチに一時の平和が訪れた。\nだが、これは森岡シティを覆う巨大な闇の、ほんの入り口に過ぎなかった……。\n\n（つづく）", 
-            img: "bg_city.png" 
+            img: "images/bg_city.png" 
         }
     ];
 
@@ -132,11 +131,9 @@
 
     // --- 画像を安全に表示する関数 ---
     function showImage(filename) {
-        // 画像ファイル名が指定されていない、または空の場合はプレースホルダーを表示
         if (!filename || filename.startsWith("[")) {
             sceneImg.innerHTML = `<div class="placeholder-text">${filename || 'No Image'}</div>`;
         } else {
-            // 画像タグを生成して埋め込む
             sceneImg.innerHTML = `<img src="${filename}" alt="Scene Image" onerror="this.parentElement.innerHTML='<div class=\\'placeholder-text\\'>画像が見つかりません:<br>${filename}</div>'">`;
         }
     }
@@ -148,13 +145,11 @@
         const data = scenario[currentStep];
 
         if (data.type === "story") {
-            // ストーリーパート表示
             textBox.innerHTML = `<span class="name-tag">${data.speaker}</span>${data.text.replace(/\n/g, '<br>')}`;
-            showImage(data.img); // 画像表示関数を呼び出す
+            showImage(data.img);
             document.getElementById("action-btn").innerText = "▼ 次へ";
             currentStep++;
         } else if (data.type === "battle") {
-            // バトル前表示
             textBox.innerHTML = `<span class="name-tag">${data.speaker}</span>${data.text.replace(/\n/g, '<br>')}`;
             showImage(data.img);
             
@@ -281,4 +276,3 @@
 </script>
 </body>
 </html>
-
